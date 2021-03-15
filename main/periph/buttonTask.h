@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-10-25 15:01:11
- * @LastEditTime: 2021-03-14 00:09:08
+ * @LastEditTime: 2021-03-15 10:09:36
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\periph\buttonTask.h
@@ -19,7 +19,7 @@
 #include "esp_audio.h"
 
 
-#define LED GPIO_NUM_18
+
 
 
 extern TaskHandle_t buttonTask_handle;

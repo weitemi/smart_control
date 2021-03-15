@@ -1,7 +1,7 @@
 <!--
  * @Author: your name
  * @Date: 2021-03-06 09:55:31
- * @LastEditTime: 2021-03-14 00:48:52
+ * @LastEditTime: 2021-03-15 14:22:26
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\README.md
@@ -37,6 +37,6 @@
 
 ## 目前的问题
 
-wifi连接问题
+wifi csi及蓝牙
 
 

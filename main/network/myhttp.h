@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-10-22 10:00:03
- * @LastEditTime: 2020-12-27 20:25:30
+ * @LastEditTime: 2021-03-15 14:12:37
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\network\myhttp.h
@@ -15,7 +15,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/queue.h"
 
-extern EventGroupHandle_t http_api_evengroup;
+
 
 extern char baidu_access_token[80];
 extern esp_err_t http_event_handle(esp_http_client_event_t *evt);

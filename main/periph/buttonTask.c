@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-10-25 15:01:11
- * @LastEditTime: 2021-03-14 00:21:57
+ * @LastEditTime: 2021-03-14 21:57:30
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\periph\buttonTask.c
@@ -33,7 +33,7 @@ void button_task(void *arg)
 
     ESP_LOGI(TAG, " Initialize peripherals");
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-    esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
+    esp_periph_set_handle_t set = (esp_periph_set_handle_t)(arg);
 
     ESP_LOGI(TAG, " Initialize keys on board");
     audio_board_key_init(set);

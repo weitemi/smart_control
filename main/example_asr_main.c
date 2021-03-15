@@ -43,6 +43,9 @@
 #include "esp_peripherals.h"
 #include "periph_touch.h"
 #include "periph_adc_button.h"
+#include "esp_wifi.h"
+#include "periph_wifi.h"
+#include "esp_event.h"
 
 static const char *TAG = "main.c";
 
@@ -129,7 +132,7 @@ int led_init()
     err = gpio_config(&led);
     if (err != ESP_OK)
     {
-        
+
         ESP_LOGI(TAG, "led fail");
         return ESP_FAIL;
     }
@@ -141,25 +144,28 @@ void app_main()
 
     esp_log_level_set("*", ESP_LOG_WARN);
     esp_log_level_set(TAG, ESP_LOG_INFO);
-
+    esp_err_t err;
     led_init();
     storage_init();
+    
+
+    esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
+    esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
+
     player_init();
-    xTaskCreate(button_task, "btn", 2048, NULL, 5, NULL);
+    xTaskCreate(button_task, "btn", 2048, set, 5, NULL);
     IR_init();
     xTaskCreate(rmt_ir_txTask, "ir_tx", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, &ir_tx_handle);
 
     xTaskCreate(rmt_ir_rxTask, "ir_rx", IR_RX_TASK_SIZE, NULL, IR_RX_TASK_PRO, &ir_rx_handle);
 
-    
-    //wifi_init_sta();
-    //httptask_init();
+    wifi_init_sta();
+    httptask_init();
     //xTaskCreate(clock_task, "clock_Task", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, NULL); //不完善
 
 #if USE_HEAP_MANGER
     xTaskCreate(heap_manager_task, "heap_manager_task", HEAP_MANAGER_TASK_SIZE, NULL, HEAP_MANAGER_TASK_PRO, NULL);
 #endif
-
 
     ESP_LOGI(TAG, "Initialize SR wn handle");
     esp_wn_iface_t *wakenet;
@@ -203,7 +209,6 @@ void app_main()
     uint32_t mn_count = 0;
 
     ESP_LOGI(TAG, "[ 1 ] Start codec chip");
-
 
     ESP_LOGI(TAG, "[ 2.0 ] Create audio pipeline for recording");
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
@@ -320,7 +325,7 @@ timer_cb ir_close_cb(struct timer *tmr, void *arg)
 timer_cb cb_5s(struct timer *tmr, void *arg)
 {
     ESP_LOGI(TAG, "timer to close the aircon");
-ac_open(true);
+    ac_open(true);
     AC_SUCCESS_MP3;
     return NULL;
 }
@@ -555,7 +560,7 @@ static esp_err_t asr_multinet_control(int commit_id)
             clk.cal.second += 5;
             tmr_new(&clk, cb_5s, NULL, "5s");
             SETTMR_MP3;
-            
+
             break;
         case ID36_LIUMIAOHOUGUANBIKONGTIAO:
             ESP_LOGI(TAG, "ID36_LIUMIAOHOUGUANBIKONGTIAO");
@@ -563,7 +568,7 @@ static esp_err_t asr_multinet_control(int commit_id)
             clk.cal.second += 6;
             tmr_new(&clk, cb_6s, NULL, "6s");
             SETTMR_MP3;
-            
+
             break;
         case ID37_KAIQIHONGWAIXUEXI:
 
@@ -587,8 +592,6 @@ timer:
     SETTMR_MP3;
     return ESP_OK;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////
 
@@ -623,11 +626,10 @@ void heap_manager_task(void *agr)
 
 #endif
 
-
 #if 0
 static void all_init()
 {
-    #if 1
+#if 1
     gpio_config_t led;
     led.mode = GPIO_MODE_OUTPUT;
     led.pin_bit_mask = (1ULL << LED);
@@ -652,14 +654,13 @@ static void all_init()
 
     
     //httptask_init();
-    #endif
+#endif
     
 }
 
 
 void app_main()
 {
-
 
 #if USE_HEAP_MANGER
     xTaskCreate(heap_manager_task, "heap_manager_task", HEAP_MANAGER_TASK_SIZE, NULL, HEAP_MANAGER_TASK_PRO, NULL);

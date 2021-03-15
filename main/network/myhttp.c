@@ -22,7 +22,7 @@ const int GET_TIME_OK_BIT = BIT2;
 const int GET_WEATHER_OK_BIT = BIT3;
 const int UPDATE_TOKEN_BIT = BIT4;
 
-EventGroupHandle_t http_api_evengroup;  //api任务事件组 
+static EventGroupHandle_t http_api_evengroup;  //api任务事件组 
 
 void *buffer;
 /*
@@ -251,7 +251,7 @@ char *get_Time_String()
  */
 void http_api_task(void *arg)
 {
-    esp_log_level_set(TAG, ESP_LOG_INFO);
+    
 
     esp_http_client_handle_t client;
 
@@ -261,7 +261,7 @@ void http_api_task(void *arg)
         .user_data = (void *)http_data, //http数据缓存
     };
     
-    http_api_evengroup = xEventGroupCreate();   //创建api事件组，用于各种api请求的同步
+    
 
     while (1)
     {
@@ -422,6 +422,8 @@ timer_cb cb_15s(struct timer *tmr, void *arg)
  */
 void httptask_init()
 {
+    esp_log_level_set(TAG, ESP_LOG_INFO);
+    http_api_evengroup = xEventGroupCreate();   //创建api事件组，用于各种api请求的同步
     xTaskCreate(http_api_task, "http_api_task", 2048 * 2, NULL, 5, NULL);
     global_clk_init();
     #if 0
