@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-12-19 16:48:59
- * @LastEditTime: 2021-03-07 13:57:54
+ * @LastEditTime: 2021-03-16 11:03:06
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adfd:\MyNote\clk_t\clk_t.c
@@ -370,6 +370,9 @@ clk_t get_current_nettime()
 	return conf;
 }
 
+/*
+ * 定时器回调函数：更新全局时间
+ */
 timer_cb update_global_cb(struct timer *tmr, void *agr)
 {
 	clk_t t = get_current_nettime();
@@ -380,6 +383,10 @@ timer_cb update_global_cb(struct timer *tmr, void *agr)
 	tmr_add(tmr); //将更新任务再次添加进
 	return NULL;
 }
+
+/*
+ * 时钟任务，每秒执行，处理定时任务及时间更新
+ */
 void clock_task(void *arg)
 {
 	esp_log_level_set(TAG, ESP_LOG_INFO);
@@ -390,6 +397,11 @@ void clock_task(void *arg)
 		tmr_process(NULL);
 	}
 }
+
+/*
+ * 全局时间初始化
+ * 获取网络事件，设置定时器，自动更新全局时间
+ */
 int global_clk_init()
 {
 	clk_t t = get_current_nettime();

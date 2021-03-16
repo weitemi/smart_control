@@ -52,7 +52,10 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-
+/*
+ * wifi初始化为station模式
+ * 注册事件组，可断线重连
+ */
 void wifi_init_sta()
 {
 
@@ -115,11 +118,11 @@ void wifi_init_sta()
     //ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler));
     //vEventGroupDelete(s_wifi_event_group);
 }
-#if 0
+#if 1
 /*
- * 更新wifi配置
+ * 更新wifi配置 用于更换路由器
 */
-void wifi_update()
+void wifi_update(wifi_config_t* wifi_config)
 {
     //若wifi已连接则先断开
     if (get_wifi_status())
@@ -127,7 +130,7 @@ void wifi_update()
         ESP_ERROR_CHECK(esp_wifi_disconnect());
     }
 
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config)); //根据wifi_config重新设置wifi信息
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, wifi_config)); //根据wifi_config重新设置wifi信息
     //ESP_ERROR_CHECK(esp_wifi_start());
     esp_wifi_connect(); //重新连接
 }
@@ -147,6 +150,8 @@ int get_wifi_status()
     else
         return 0;
 }
+
+//todo ：测试
 wifi_csi_cb_t csi_cb(void *ctx, wifi_csi_info_t *data)
 {
     return NULL;

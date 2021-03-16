@@ -53,71 +53,6 @@
 #define RMT_TX_DATA_NUM  2    /*!< NEC tx test data number */
 #define rmt_item32_tIMEOUT_US  21000   /*!< RMT receiver timeout value(us) 由于连接码的时间长度大约为20600us所以设置时间长点 */
 
-#define SET_IR_DATA(data, wide, mask, setdata) \
-    {                                          \
-        data &= ~(wide << mask);               \
-        data |= (setdata << mask);             \
-    }
-
-//红外数据编码掩码
-#define IR0_MASK_OPEN 3
-#define IR0_MASK_WIND_SPEED 4
-#define IR0_MASK_WIND_SCAN 6
-#define IR0_MASK_TEMP 8
-#define IR0_MASK_TIMER 12
-
-#define IR1_MASK_WIND_SCAN 0
-
-
-//掩码的位数
-#define IR0_WIDE_OPEN 0b1
-#define IR0_WIDE_WIND_SPEED 0b11
-#define IR0_WIDE_WIND_SCAN 0b1
-#define IR0_WIDE_TEMP 0b1111
-#define IR0_TIMER 0b11111111
-
-#define IR1_WIDE_WIND_SCAN 0b1
-
-
-//空调开关
-#define IR_OPEN 1
-#define IR_CLOSE 0
-
-
-//风速调节
-#define IR_AUTO_WIND 0
-#define IR_LOW_WIND 1
-#define IR_MID_WIND 2
-#define IR_HIGH_WIND 3
-
-
-
-typedef struct IR_Msg_t *IR_Msg_handle;
-
-//红外信息的结构体
-struct IR_Msg_t
-{
-    uint8_t temp;   //温度
-    uint8_t open;   //开关
-    uint8_t windspeed;  //风速
-    uint8_t scan;   //扫风开关
-    uint8_t timer_hour; //定时 小时
-    uint8_t timer_min;  //定时 分钟
-    uint32_t check; //校验码
-    uint64_t data0; //第一帧红外码
-    uint32_t data1; //第二帧红外码
-    
-};
-
-//红外发射类型
-typedef enum 
-{
-    IR_TX_TYPE_NVS = 1, //使用nvs库
-    IR_TX_TYPE_MSG, //使用代码
-    IR_TX_TYPE_IREXT,   //irext库
-    IR_TX_TYPE_MAX
-}ir_tx_type_t;
-extern const char *ir_code_lib[];
 
 enum ac_band
 {
@@ -140,29 +75,32 @@ enum ac_pro_code
    
     code_max
 };
+
+//品牌+协议编码 = 红外码库
 struct AC_Control
 {
-    uint8_t index;
-    enum ac_band band;
-    enum ac_pro_code pro_code;   //protol code
-    t_remote_ac_status status;
+    enum ac_band band;  //品牌
+    enum ac_pro_code pro_code;   //协议编码
+    t_remote_ac_status status;  //空调控制结构体
 };
-struct AC_Control ac_handle;
 
+//空调结构体，用于控制空调
+static struct AC_Control ac_handle; 
+
+//接收到的红外信号
 struct RX_signal
 {
-    uint32_t item_num;
-    uint32_t lowlevel;//us
-    uint32_t highlevel_1;
-    uint32_t highlevel_0;
-    uint32_t encode;
+    uint32_t item_num;  //item数量
+    uint32_t lowlevel;  //低电平时间 us
+    uint32_t highlevel_1;   //高电平1的时间
+    uint32_t highlevel_0;   //高电平0的时间
+    uint32_t encode;    //由0和1组成的编码
 };
 
 
 
-//extern t_remote_ac_status ac_status;
-//extern IR_Msg_handle ir_msg ;
-extern TaskHandle_t ir_tx_handle,ir_rx_handle;
+
+TaskHandle_t ir_tx_handle;
 
 int ac_set_code_lib(enum ac_band b, enum ac_pro_code code);
 int ac_set_temp(int temp);
@@ -174,10 +112,7 @@ void ir_study();    //开启学习
 int IR_init();  //初始化
 int storage_init(); //存储系统，文件系统初始化
 
-//int ir_tx_msg();
-//int ir_rx(const char *key);
-//int ir_tx_nvs(const char *key);
-//int ir_tx_irext(const char *fn);
+
 void rmt_ir_txTask(void *agr);
 void rmt_ir_rxTask(void *agr);
 #endif

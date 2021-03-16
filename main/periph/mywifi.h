@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-06 09:50:47
- * @LastEditTime: 2021-03-14 22:52:22
+ * @LastEditTime: 2021-03-16 11:08:12
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_smartcontrol\main\periph\mywifi.h
@@ -26,7 +26,7 @@
 
 
 void wifi_init_sta(void);
-void wifi_update();
+void wifi_update(wifi_config_t *wifi_config);
 int get_wifi_status();
 
 #endif

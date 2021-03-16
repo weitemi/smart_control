@@ -1,42 +1,53 @@
-<!--
- * @Author: your name
- * @Date: 2021-03-06 09:55:31
- * @LastEditTime: 2021-03-15 14:22:26
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
- * @FilePath: \esp-adf\examples\myapp\off_asr\README.md
--->
+
+
 # 智能控制
 
-## 使用：
-根据partitions.cv烧录二进制文件，其中包括app，spiffs文件系统，和flash音频文件。
+## 一 使用：
 
-### 1，烧录spiffs文件系统
-项目目录下执行 `python spiffsgen.py 0x19000 binfile spiffs.bin` ，其中的0x19000是分区表设置的文件系统的大小，为100k。然后使用esp32烧录工具烧录到分区表所示的位置(0x330000)。
+### 编译
 
-> python D:/ESP/idf3.3/components/esptool_py/esptool/esptool.py --chip esp32 --port COM4 --baud 115200 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 40m --flash_size detect 0x330000 ./spiffs.bin
+项目根目录下，执行 idf.py build
 
-### 2,烧录mp3
+### 烧录
 
-将mp3文件放入tools目录下，安装python2，运行`python2 mk_audio_bin.py`，生成esp-audio.bin文件<br>
+根据partitions.cv的地址安排，烧录二进制文件，可使用esptool.py或烧录软件，如图：
 
-项目目录，执行例如`python D:\ESP\esp-idf-v4.0.2\components\esptool_py\esptool\esptool.py --chip esp32 --port COM4 --baud 115200 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 40m --flash_size detect 0x320000 ./tools/audio-esp.bin`
+### 运行
 
-## 功能简介
+#### 语音唤醒及识别
+嗨乐鑫，唤醒，蓝灯亮起，说出命令词
+> 空调控制：打开空调，设置空调27度，关闭空调
+> 互联网数据：今天/明天/后天 天气怎么样
+> 定时任务设置：5秒后打开空调 ，十秒后关闭空调
+> 其他：现在几点，室内温度，红外学习
 
-### 语音唤醒及识别
-嗨乐鑫，唤醒，蓝灯亮起，执行相应动作：
-> 空调控制
-> 互联网数据
-> 定时任务设置
+#### 红外学习
 
-### 红外学习
+通过按键或语音命令进入红外接收，使用遥控器发射“打开 制冷模式 26° 自动扫风 一级风速”即可学习对应协议，目前仅支持格力美的海尔
 
-通过按键进入红外接收，使用遥控器发射“打开 制冷模式 26° 自动扫风 一级风速”即可学习对应协议，目前仅支持格力美的海尔
+## 二 目录介绍
+
+### 1,binfile
+
+存放红外码库的二进制文件，在项目根目录下有`spiffsgen.py`，用于把binfile文件编辑成可烧录到esp32的spiffs.bin，将该二进制文件烧录到esp32，则可使用spiffs文件系统
+
+项目目录下执行 `python spiffsgen.py 0x19000 binfile spiffs.bin` ，其中的0x19000是分区表设置的文件系统的大小，为100k。
+
+
+### 2，tools
+
+用于生成二进制音频文件；
+
+将mp3文件放入tools目录下，安装python2，运行`python2 mk_audio_bin.py`，生成esp-audio.bin文件
+
+
+
 
 
 ## 目前的问题
 
-wifi csi及蓝牙
+wifi csi及蓝牙 语音识别精度不够
+
+红外的任务能否改进，或者取消任务（用全局变量存放二进制文件？）
 
 

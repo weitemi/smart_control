@@ -49,7 +49,7 @@
 
 static const char *TAG = "main.c";
 
-#define USE_HEAP_MANGER 0
+#define USE_HEAP_MANGER 1
 /*----任务配置----*/
 #define ASR_TASK_PRO 6
 #define BUTTON_TASK_PRO 4
@@ -72,6 +72,7 @@ typedef enum
 
 typedef enum
 {
+    //空调
     ID0_SHEZHIKONGTIAOERSHIDU = 0,
     ID1_SHEZHIKONGTIAOERSHIYIDU = 1,
     ID2_SHEZHIKONGTIAOERSHIERDU = 2,
@@ -81,36 +82,43 @@ typedef enum
     ID6_SHEZHIKONGTIAOERSHLIUIDU = 6,
     ID7_SHEZHIKONGTIAOERSHIQIDU = 7,
     ID8_SHEZHIKONGTIAOERSHIBADU = 8,
-    ID9_DAKAILANYA = 9,
-    ID10_GUANBILANYA = 10,
-    ID11_QIDONGKONGTIAOSAOFENG = 11,
-    ID12_TINGZHIKONGTIAOSAOFENG = 12,
-    ID13_SHEZHIKONGTIAOZIDONGFENGSU = 13,
-    ID14_SHEZHIKONGTIAOYIJIFENGSU = 14,
-    ID15_SHEZHIKONGTIAOERJIFENGSU = 15,
-    ID16_SHEZHIKONGTIAOSANJIFENGSU = 16,
-    ID17_MINGTIANTIANQIZENMEYANG = 17,
-    ID18_JINTIANTIANQIZENMEYANG = 18,
-    ID19_YIXIAOSHIHOUGUANBIKONGTIAO = 19,
-    ID20_LIANGXIAOSHIHOUGUANBIKONGTIAO = 20,
-    ID21_SANXIAOSHIHOUGUANBIKONGTIAO = 21,
-    ID22_SIXIAOSHIHOUGUANBIKONGTIAO = 22,
-    ID23_WUXIAOSHIHOUGUANBIKONGTIAO = 23,
-    ID24_LIUXIAOSHIHOUGUANBIKONGTIAO = 24,
+    ID9_QIDONGKONGTIAOSAOFENG = 9,
+    ID10_TINGZHIKONGTIAOSAOFENG = 10,
+    ID11_SHEZHIKONGTIAOZIDONGFENGSU = 11,
+    ID12_SHEZHIKONGTIAOYIJIFENGSU = 12,
+    ID13_SHEZHIKONGTIAOERJIFENGSU = 13,
+    ID14_SHEZHIKONGTIAOSANJIFENGSU = 14,
+    ID15_YIXIAOSHIHOUGUANBIKONGTIAO = 15,
+    ID16_LIANGXIAOSHIHOUGUANBIKONGTIAO = 16,
+    ID17_SANXIAOSHIHOUGUANBIKONGTIAO = 17,
+    ID18_SIXIAOSHIHOUGUANBIKONGTIAO = 18,
+    ID19_WUXIAOSHIHOUGUANBIKONGTIAO = 19,
+    ID20_LIUXIAOSHIHOUGUANBIKONGTIAO = 20,
+    ID21_QIXIAOSHIHOUGUANBIKONGTIAO = 21,
+    ID22_BAXIAOSHIHOUGUANBIKONGTIAO = 22,
+    ID23_JIUXIAOSHIHOUGUANBIKONGTIAO = 23,
+    ID24_SHIXIAOSHIHOUGUANBIKONGTIAO = 24,
     ID25_DAKAIKONGTIAO = 25,
     ID26_GUANBIKONGTIAO = 26,
-    ID27_QIXIAOSHIHOUGUANBIKONGTIAO = 27,
-    ID28_BAXIAOSHIHOUGUANBIKONGTIAO = 28,
-    ID29_JIUXIAOSHIHOUGUANBIKONGTIAO = 29,
-    ID30_SHIXIAOSHIHOUGUANBIKONGTIAO = 30,
-    ID31_SHINEIWENDU = 31,
-    ID32_HOUTIANTIANQIZENMEYANG = 32,
-    ID33_SHIMIAOHOUGUANBIKONGTIAO = 33,
-    ID34_XIANZAIJIDIAN = 34,
-    ID35_WUMIAOHOUGUANBIKONGTIAO = 35,
-    ID36_LIUMIAOHOUGUANBIKONGTIAO = 36,
-    ID37_KAIQIHONGWAIXUEXI = 37,
-    ID38_HONGWAIXUEXI = 38,
+
+    //蓝牙
+    ID30_DAKAILANYA = 30,
+    ID31_GUANBILANYA = 31,
+
+    //天气
+    ID32_MINGTIANTIANQIZENMEYANG = 32,
+    ID33_JINTIANTIANQIZENMEYANG = 33,
+    ID34_HOUTIANTIANQIZENMEYANG = 34,
+
+    //其他
+    ID35_SHINEIWENDU = 35,
+    ID36_XIANZAIJIDIAN = 36,
+    ID37_HONGWAIXUEXI = 37,
+
+    //测试
+    ID40_SHIMIAOHOUGUANBIKONGTIAO = 40,
+    ID41_JIUMIAOHOUDAKAIKONGTIAO = 41,
+
     ID_MAX,
 } asr_multinet_event_t;
 
@@ -145,23 +153,25 @@ void app_main()
     esp_log_level_set("*", ESP_LOG_WARN);
     esp_log_level_set(TAG, ESP_LOG_INFO);
     esp_err_t err;
-    led_init();
+
     storage_init();
-    
+    led_init();
 
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
     esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
 
     player_init();
-    xTaskCreate(button_task, "btn", 2048, set, 5, NULL);
+
+    xTaskCreate(button_task, "btn", BUTTON_TASK_SIZE, set, BUTTON_TASK_PRO, NULL);
+
     IR_init();
     xTaskCreate(rmt_ir_txTask, "ir_tx", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, &ir_tx_handle);
 
-    xTaskCreate(rmt_ir_rxTask, "ir_rx", IR_RX_TASK_SIZE, NULL, IR_RX_TASK_PRO, &ir_rx_handle);
+    xTaskCreate(rmt_ir_rxTask, "ir_rx", IR_RX_TASK_SIZE, NULL, IR_RX_TASK_PRO, NULL);
 
     wifi_init_sta();
     httptask_init();
-    //xTaskCreate(clock_task, "clock_Task", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, NULL); //不完善
+    xTaskCreate(clock_task, "clock_Task", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, NULL); //不完善
 
 #if USE_HEAP_MANGER
     xTaskCreate(heap_manager_task, "heap_manager_task", HEAP_MANAGER_TASK_SIZE, NULL, HEAP_MANAGER_TASK_PRO, NULL);
@@ -256,7 +266,7 @@ void app_main()
             if (wakenet->detect(model_wn_data, (int16_t *)buffer) == WAKE_UP)
             {
 
-                gpio_set_level(GPIO_NUM_18, 0);
+                gpio_set_level(GPIO_NUM_18, 0); //led亮
                 ESP_LOGI(TAG, "wake up");
                 enable_wn = false;
             }
@@ -306,21 +316,33 @@ void app_main()
     free(buffer);
     buffer = NULL;
 }
-static char *weather, s[25] = {0};
+static char *weather, string[25] = {0};
 static float temp;
 static clk_t clk;
 /*
- * 空调定时关闭回调函数
+ * 定时器回调函数
+ * 空调定时关闭
  */
 timer_cb ir_close_cb(struct timer *tmr, void *arg)
 {
-    ESP_LOGI(TAG, "timer to close the aircon");
-    ac_open(false);
+    int *id = (int *)arg;
+    
+    if (*id == 0)
+    {
+        ac_open(false);
+        ESP_LOGI(TAG, "timer to close the aircon");
+    }
+    else
+    {
+        ac_open(true);
+        ESP_LOGI(TAG, "timer to open the aircon");
+    }
 
     return NULL;
 }
 /*
- * 空调定时关闭回调函数 5s测试专用
+ * 定时器回调函数
+ * 空调定时关闭，5s，测试用
  */
 timer_cb cb_5s(struct timer *tmr, void *arg)
 {
@@ -330,7 +352,8 @@ timer_cb cb_5s(struct timer *tmr, void *arg)
     return NULL;
 }
 /*
- * 空调定时开启回调函数 6s测试专用
+ * 定时器回调函数
+ * 空调定时打开 6s，测试用
  */
 timer_cb cb_6s(struct timer *tmr, void *arg)
 {
@@ -340,8 +363,12 @@ timer_cb cb_6s(struct timer *tmr, void *arg)
     return NULL;
 }
 
+/*
+ * 语音识别处理函数
+ */
 static esp_err_t asr_multinet_control(int commit_id)
 {
+    int id = 0;
     if (commit_id >= 0 && commit_id < ID_MAX)
     {
         switch (commit_id)
@@ -350,150 +377,176 @@ static esp_err_t asr_multinet_control(int commit_id)
             ac_set_temp(20);
 
             ESP_LOGI(TAG, "ID0_SHEZHIKONGTIAOERSHIDU");
+            AC_SUCCESS_MP3;
             break;
 
         case ID1_SHEZHIKONGTIAOERSHIYIDU:
             ac_set_temp(21);
 
             ESP_LOGI(TAG, "ID1_SHEZHIKONGTIAOERSHIYIDU");
+            AC_SUCCESS_MP3;
             break;
 
         case ID2_SHEZHIKONGTIAOERSHIERDU:
             ac_set_temp(22);
 
             ESP_LOGI(TAG, "ID2_SHEZHIKONGTIAOERSHIERDU");
+            AC_SUCCESS_MP3;
             break;
 
         case ID3_SHEZHIKONGTIAOERSHISANDU:
             ac_set_temp(23);
 
             ESP_LOGI(TAG, "ID3_SHEZHIKONGTIAOERSHISANDU");
+            AC_SUCCESS_MP3;
             break;
 
         case ID4_SHEZHIKONGTIAOERSHISIDU:
             ac_set_temp(24);
 
             ESP_LOGI(TAG, "ID4_SHEZHIKONGTIAOERSHISIDU");
+            AC_SUCCESS_MP3;
             break;
 
         case ID5_SHEZHIKONGTIAOERSHIWUDU:
             ac_set_temp(25);
 
             ESP_LOGI(TAG, "ID5_SHEZHIKONGTIAOERSHIWUDU");
+            AC_SUCCESS_MP3;
             break;
 
         case ID6_SHEZHIKONGTIAOERSHLIUIDU:
             ac_set_temp(26);
             ESP_LOGI(TAG, "ID6_SHEZHIKONGTIAOERSHLIUIDU");
+            AC_SUCCESS_MP3;
             break;
 
         case ID7_SHEZHIKONGTIAOERSHIQIDU:
             ac_set_temp(27);
 
             ESP_LOGI(TAG, "ID7_SHEZHIKONGTIAOERSHIQIDU");
+            AC_SUCCESS_MP3;
             break;
 
         case ID8_SHEZHIKONGTIAOERSHIBADU:
             ac_set_temp(28);
 
             ESP_LOGI(TAG, "ID8_SHEZHIKONGTIAOERSHIBADU");
+            AC_SUCCESS_MP3;
             break;
 
-        case ID9_DAKAILANYA:
-            //todo lanya
-            ESP_LOGI(TAG, "ID9_DAKAILANYA");
-            break;
-        case ID10_GUANBILANYA:
-            ESP_LOGI(TAG, "ID10_GUANBILANYA");
-            break;
-        case ID11_QIDONGKONGTIAOSAOFENG:
-            //todo :saofeng?
+        case ID9_QIDONGKONGTIAOSAOFENG:
             ac_set_swing(true);
-            ESP_LOGI(TAG, "ID11_QIDONGKONGTIAOSAOFENG");
+            ESP_LOGI(TAG, "ID9_QIDONGKONGTIAOSAOFENG");
+            AC_SUCCESS_MP3;
             break;
-
-        case ID12_TINGZHIKONGTIAOSAOFENG:
+        case ID10_TINGZHIKONGTIAOSAOFENG:
             ac_set_swing(false);
-            ESP_LOGI(TAG, "ID12_TINGZHIKONGTIAOSAOFENG");
+            ESP_LOGI(TAG, "ID10_TINGZHIKONGTIAOSAOFENG");
+            AC_SUCCESS_MP3;
             break;
-
-        case ID13_SHEZHIKONGTIAOZIDONGFENGSU:
+        case ID11_SHEZHIKONGTIAOZIDONGFENGSU:
             ac_set_wind_speed(0);
-            ESP_LOGI(TAG, "ID13_SHEZHIKONGTIAOZIDONGFENGSU");
+
+            ESP_LOGI(TAG, "ID11_SHEZHIKONGTIAOZIDONGFENGSU");
+            AC_SUCCESS_MP3;
             break;
 
-        case ID14_SHEZHIKONGTIAOYIJIFENGSU:
+        case ID12_SHEZHIKONGTIAOYIJIFENGSU:
             ac_set_wind_speed(1);
-
-            ESP_LOGI(TAG, "ID14_SHEZHIKONGTIAOYIJIFENGSU");
+            ESP_LOGI(TAG, "ID12_SHEZHIKONGTIAOYIJIFENGSU");
+            AC_SUCCESS_MP3;
             break;
 
-        case ID15_SHEZHIKONGTIAOERJIFENGSU:
+        case ID13_SHEZHIKONGTIAOERJIFENGSU:
             ac_set_wind_speed(2);
-
-            ESP_LOGI(TAG, "ID15_SHEZHIKONGTIAOERJIFENGSU");
+            ESP_LOGI(TAG, "ID13_SHEZHIKONGTIAOERJIFENGSU");
+            AC_SUCCESS_MP3;
             break;
 
-        case ID16_SHEZHIKONGTIAOSANJIFENGSU:
+        case ID14_SHEZHIKONGTIAOSANJIFENGSU:
             ac_set_wind_speed(3);
 
-            ESP_LOGI(TAG, "ID16_SHEZHIKONGTIAOSANJIFENGSU");
+            ESP_LOGI(TAG, "ID14_SHEZHIKONGTIAOSANJIFENGSU");
+            AC_SUCCESS_MP3;
             break;
 
-        case ID17_MINGTIANTIANQIZENMEYANG:
-            weather = get_Weather_String(1);
-            speech_sync(weather);
-            ESP_LOGI(TAG, "ID17_MINGTIANTIANQIZENMEYANG");
-            break;
-        case ID18_JINTIANTIANQIZENMEYANG:
-            weather = get_Weather_String(0);
-            speech_sync(weather);
-            ESP_LOGI(TAG, "ID18_JINTIANTIANQIZENMEYANG");
-            break;
-        case ID19_YIXIAOSHIHOUGUANBIKONGTIAO:
-            ESP_LOGI(TAG, "ID19_YIXIAOSHIHOUGUANBIKONGTIAO");
+        case ID15_YIXIAOSHIHOUGUANBIKONGTIAO:
             clk.value = global_clk.value;
             clk.cal.hour += 1;
             goto timer;
 
-        case ID20_LIANGXIAOSHIHOUGUANBIKONGTIAO:
+            ESP_LOGI(TAG, "ID15_YIXIAOSHIHOUGUANBIKONGTIAO");
+            break;
 
-            ESP_LOGI(TAG, "ID20_LIANGXIAOSHIHOUGUANBIKONGTIAO");
+        case ID16_LIANGXIAOSHIHOUGUANBIKONGTIAO:
             clk.value = global_clk.value;
             clk.cal.hour += 2;
             goto timer;
 
-        case ID21_SANXIAOSHIHOUGUANBIKONGTIAO:
+            ESP_LOGI(TAG, "ID16_LIANGXIAOSHIHOUGUANBIKONGTIAO");
+            break;
 
-            ESP_LOGI(TAG, "ID21_SANXIAOSHIHOUGUANBIKONGTIAO");
+        case ID17_SANXIAOSHIHOUGUANBIKONGTIAO:
             clk.value = global_clk.value;
             clk.cal.hour += 3;
             goto timer;
 
-        case ID22_SIXIAOSHIHOUGUANBIKONGTIAO:
-
-            ESP_LOGI(TAG, "ID22_SIXIAOSHIHOUGUANBIKONGTIAO");
+            ESP_LOGI(TAG, "ID17_SANXIAOSHIHOUGUANBIKONGTIAO");
+            break;
+        case ID18_SIXIAOSHIHOUGUANBIKONGTIAO:
             clk.value = global_clk.value;
             clk.cal.hour += 4;
             goto timer;
 
-        case ID23_WUXIAOSHIHOUGUANBIKONGTIAO:
-
-            ESP_LOGI(TAG, "ID23_WUXIAOSHIHOUGUANBIKONGTIAO");
+            weather = get_Weather_String(0);
+            speech_sync(weather);
+            ESP_LOGI(TAG, "ID18_SIXIAOSHIHOUGUANBIKONGTIAO");
+            break;
+        case ID19_WUXIAOSHIHOUGUANBIKONGTIAO:
             clk.value = global_clk.value;
             clk.cal.hour += 5;
             goto timer;
+            ESP_LOGI(TAG, "ID19_WUXIAOSHIHOUGUANBIKONGTIAO");
 
-        case ID24_LIUXIAOSHIHOUGUANBIKONGTIAO:
-
-            ESP_LOGI(TAG, "ID24_LIUXIAOSHIHOUGUANBIKONGTIAO");
+        case ID20_LIUXIAOSHIHOUGUANBIKONGTIAO:
             clk.value = global_clk.value;
             clk.cal.hour += 6;
+            goto timer;
+            ESP_LOGI(TAG, "ID20_LIUXIAOSHIHOUGUANBIKONGTIAO");
+
+        case ID21_QIXIAOSHIHOUGUANBIKONGTIAO:
+
+            ESP_LOGI(TAG, "ID21_QIXIAOSHIHOUGUANBIKONGTIAO");
+            clk.value = global_clk.value;
+            clk.cal.hour += 7;
+            goto timer;
+
+        case ID22_BAXIAOSHIHOUGUANBIKONGTIAO:
+
+            ESP_LOGI(TAG, "ID22_BAXIAOSHIHOUGUANBIKONGTIAO");
+            clk.value = global_clk.value;
+            clk.cal.hour += 8;
+            goto timer;
+
+        case ID23_JIUXIAOSHIHOUGUANBIKONGTIAO:
+
+            ESP_LOGI(TAG, "ID23_JIUXIAOSHIHOUGUANBIKONGTIAO");
+            clk.value = global_clk.value;
+            clk.cal.hour += 9;
+            goto timer;
+
+        case ID24_SHIXIAOSHIHOUGUANBIKONGTIAO:
+
+            ESP_LOGI(TAG, "ID24_SHIXIAOSHIHOUGUANBIKONGTIAO");
+            clk.value = global_clk.value;
+            clk.cal.hour += 10;
             goto timer;
 
         case ID25_DAKAIKONGTIAO:
             ESP_LOGI(TAG, "ID25_DAKAIKONGTIAO");
             ac_open(true);
+            AC_SUCCESS_MP3;
             break;
 
         case ID26_GUANBIKONGTIAO:
@@ -501,83 +554,73 @@ static esp_err_t asr_multinet_control(int commit_id)
             AC_CLOSE_MP3;
             ESP_LOGI(TAG, "ID26_GUANBIKONGTIAO");
             break;
-        case ID27_QIXIAOSHIHOUGUANBIKONGTIAO:
 
-            ESP_LOGI(TAG, "ID27_QIXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = global_clk.value;
-            clk.cal.hour += 7;
-            goto timer;
+            //////////////////////////////////
+        case ID30_DAKAILANYA:
 
-        case ID28_BAXIAOSHIHOUGUANBIKONGTIAO:
-
-            ESP_LOGI(TAG, "ID28_BAXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = global_clk.value;
-            clk.cal.hour += 8;
-            goto timer;
-
-        case ID29_JIUXIAOSHIHOUGUANBIKONGTIAO:
-
-            ESP_LOGI(TAG, "ID29_JIUXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = global_clk.value;
-            clk.cal.hour += 9;
-            goto timer;
-
-        case ID30_SHIXIAOSHIHOUGUANBIKONGTIAO:
-
-            ESP_LOGI(TAG, "ID30_SHIXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = global_clk.value;
-            clk.cal.hour += 10;
-            goto timer;
-
-        case ID31_SHINEIWENDU:
-            ESP_LOGI(TAG, "ID31_SHINEIWENDU ");
-            temp = ds18b20_get_data();
-
-            sprintf(s, "当前室温 %.1f 度", temp);
-            speech_sync(s);
-
+            ESP_LOGI(TAG, "ID30_DAKAILANYA");
             break;
-        case ID32_HOUTIANTIANQIZENMEYANG:
-            ESP_LOGI(TAG, "ID32_HOUTIANTIANQIZENMEYANG");
+
+        case ID31_GUANBILANYA:
+
+            ESP_LOGI(TAG, "ID31_GUANBILANYA");
+            break;
+
+        case ID32_MINGTIANTIANQIZENMEYANG:
+
+            ESP_LOGI(TAG, "ID32_MINGTIANTIANQIZENMEYANG");
+            weather = get_Weather_String(1);
+            speech_sync(weather);
+            break;
+        case ID33_JINTIANTIANQIZENMEYANG:
+
+            ESP_LOGI(TAG, "ID33_JINTIANTIANQIZENMEYANG");
+            weather = get_Weather_String(0);
+            speech_sync(weather);
+            break;
+        case ID34_HOUTIANTIANQIZENMEYANG:
+            ESP_LOGI(TAG, "ID34_HOUTIANTIANQIZENMEYANG ");
             weather = get_Weather_String(2);
             speech_sync(weather);
+            break;
+
+        case ID35_SHINEIWENDU:
+            ESP_LOGI(TAG, "ID35_SHINEIWENDU");
+            temp = ds18b20_get_data();
+
+            sprintf(string, "当前室温 %.1f 度", temp);
+            speech_sync(string);
+            break;
+
+        case ID36_XIANZAIJIDIAN:
+            ESP_LOGI(TAG, "ID36_XIANZAIJIDIAN");
+            sprintf(string, "20%d-%d-%d %d:%d:%d\r\n", global_clk.cal.year, global_clk.cal.month, global_clk.cal.date, global_clk.cal.hour, global_clk.cal.minute, global_clk.cal.second);
+            speech_sync(string);
 
             break;
-        case ID33_SHIMIAOHOUGUANBIKONGTIAO:
-            ESP_LOGI(TAG, "ID33_SHIMIAOHOUGUANBIKONGTIAO");
-            SETTMR_MP3;
-
-            break;
-        case ID34_XIANZAIJIDIAN:
-            ESP_LOGI(TAG, "ID34_XIANZAIJIDIAN:%s", s);
-            sprintf(s, "20%d-%d-%d %d:%d:%d\r\n", global_clk.cal.year, global_clk.cal.month, global_clk.cal.date, global_clk.cal.hour, global_clk.cal.minute, global_clk.cal.second);
-            speech_sync(s);
-
-            break;
-        case ID35_WUMIAOHOUGUANBIKONGTIAO:
-            ESP_LOGI(TAG, "ID35_WUMIAOHOUGUANBIKONGTIAO");
-            clk.value = global_clk.value;
-            clk.cal.second += 5;
-            tmr_new(&clk, cb_5s, NULL, "5s");
-            SETTMR_MP3;
-
-            break;
-        case ID36_LIUMIAOHOUGUANBIKONGTIAO:
-            ESP_LOGI(TAG, "ID36_LIUMIAOHOUGUANBIKONGTIAO");
-            clk.value = global_clk.value;
-            clk.cal.second += 6;
-            tmr_new(&clk, cb_6s, NULL, "6s");
-            SETTMR_MP3;
-
-            break;
-        case ID37_KAIQIHONGWAIXUEXI:
-
-            ESP_LOGI(TAG, "ID37_KAIQIHONGWAIXUEXI");
-            break;
-        case ID38_HONGWAIXUEXI:
-            ESP_LOGI(TAG, "please send message");
+        case ID37_HONGWAIXUEXI:
+            ESP_LOGI(TAG, "ID37_HONGWAIXUEXI");
             ir_study();
             break;
+        case ID40_SHIMIAOHOUGUANBIKONGTIAO:
+            ESP_LOGI(TAG, "ID40_SHIMIAOHOUGUANBIKONGTIAO:%s", string);
+            clk.value = global_clk.value;
+            clk.cal.second += 10;
+            id = 0;
+            tmr_new(&clk, ir_close_cb, &id, "10s");
+            SETTMR_MP3;
+
+            break;
+        case ID41_JIUMIAOHOUDAKAIKONGTIAO:
+            ESP_LOGI(TAG, "ID41_WUMIAOHOUDAKAIKONGTIAO");
+            clk.value = global_clk.value;
+            clk.cal.second += 9;
+            id = 1;
+            tmr_new(&clk, ir_close_cb, &id, "5s");
+            SETTMR_MP3;
+
+            break;
+
         default:
             ESP_LOGI(TAG, "not supportint mode");
             break;
@@ -624,114 +667,4 @@ void heap_manager_task(void *agr)
     }
 }
 
-#endif
-
-#if 0
-static void all_init()
-{
-#if 1
-    gpio_config_t led;
-    led.mode = GPIO_MODE_OUTPUT;
-    led.pin_bit_mask = (1ULL << LED);
-    led.intr_type = GPIO_INTR_DISABLE;
-    led.pull_down_en = 0;
-    led.pull_up_en = 0;
-    gpio_config(&led);
-    gpio_set_level(GPIO_NUM_18, 1);
-
-
-
-
-    storage_init();
-    //wifi_init_sta();
-    //player_init();
-    IR_init();
-    xTaskCreate(rmt_ir_txTask, "ir_tx", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, &ir_tx_handle);
-
-    xTaskCreate(rmt_ir_rxTask, "ir_rx", IR_RX_TASK_SIZE, NULL, IR_RX_TASK_PRO, &ir_rx_handle);
-
-    //xTaskCreate(clock_task, "clock_Task", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, NULL); //不完善
-
-    
-    //httptask_init();
-#endif
-    
-}
-
-
-void app_main()
-{
-
-#if USE_HEAP_MANGER
-    xTaskCreate(heap_manager_task, "heap_manager_task", HEAP_MANAGER_TASK_SIZE, NULL, HEAP_MANAGER_TASK_PRO, NULL);
-#endif
-    esp_log_level_set("*", ESP_LOG_WARN);
-    esp_log_level_set(TAG, ESP_LOG_INFO);
-
-    ESP_LOGI(TAG, "[ 1 ] Start audio codec chip");
-    audio_board_handle_t board_handle = audio_board_init();
-    audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
-
-    int player_volume;
-    audio_hal_get_volume(board_handle->audio_hal, &player_volume);
-
-
-    ESP_LOGI(TAG, "[ 3 ] Initialize peripherals");
-    esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-    esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
-
-    
-    ESP_LOGI(TAG, "[3.1] Initialize keys on board");
-    audio_board_key_init(set);
-
-    ESP_LOGI(TAG, "[ 4 ] Set up  event listener");
-    audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
-    audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
-
-
-    ESP_LOGI(TAG, "[4.2] Listening event from peripherals");
-    audio_event_iface_set_listener(esp_periph_set_get_event_iface(set), evt);
-
-    all_init();
-    ir_study();
-    xTaskCreate(ASR_Task, "ASR_Task", ASR_TASK_SIZE, NULL, ASR_TASK_PRO, NULL);
-    uint32_t lib_num = 0;
-    while (1)
-    {
-        
-        audio_event_iface_msg_t msg;
-        esp_err_t ret = audio_event_iface_listen(evt, &msg, portMAX_DELAY);
-        if (ret != ESP_OK)
-        {
-            ESP_LOGE(TAG, "[ * ] Event interface error : %d", ret);
-            continue;
-        }
-
-        if ((msg.source_type == PERIPH_ID_TOUCH || msg.source_type == PERIPH_ID_BUTTON || msg.source_type == PERIPH_ID_ADC_BTN) && (msg.cmd == PERIPH_TOUCH_TAP || msg.cmd == PERIPH_BUTTON_PRESSED || msg.cmd == PERIPH_ADC_BUTTON_PRESSED))
-        {
-
-            if ((int)msg.data == KEY2)
-            {
-                //ac_set_code_lib(band_haier, lib_num);
-                //ac_open(true);
-                //ESP_LOGI(TAG, "ir tx:%s", ir_code_lib[band_haier*5+lib_num]);
-                ESP_LOGI(TAG, "please send message");
-                ir_study();
-            }
-            else if ((int)msg.data == KEY1)
-            {
-                
-                ac_set_temp(25);
-#if 0
-                lib_num++;
-                if(lib_num==5)
-                {
-                    lib_num = 0;
-                }
-                ESP_LOGI(TAG, "lib num = %u",lib_num);
-#endif
-            }
-        }
-    }
-}
 #endif

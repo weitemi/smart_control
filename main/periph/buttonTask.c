@@ -1,29 +1,25 @@
 /*
  * @Author: your name
  * @Date: 2020-10-25 15:01:11
- * @LastEditTime: 2021-03-14 21:57:30
+ * @LastEditTime: 2021-03-16 10:29:55
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\periph\buttonTask.c
  */
 #include "buttonTask.h"
 #include "irTask.h"
-#include "dht11.h"
-#include "myhttp.h"
-#include "player.h"
-#include "myds18b20.h"
-#include "clock.h"
-#include "driver/gpio.h"
+#include "esp_peripherals.h"
+#include "periph_touch.h"
+#include "periph_adc_button.h"
+#include "periph_button.h"
+#include "esp_log.h"
+#include "board.h"
 
 static const char *TAG = "buttonTask";
 
 
-TaskHandle_t buttonTask_handle;
 
 
-
-
-#if 1
 /*
 * 按键任务
 */
@@ -31,8 +27,6 @@ void button_task(void *arg)
 {
     esp_log_level_set(TAG, ESP_LOG_INFO);
 
-    ESP_LOGI(TAG, " Initialize peripherals");
-    esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
     esp_periph_set_handle_t set = (esp_periph_set_handle_t)(arg);
 
     ESP_LOGI(TAG, " Initialize keys on board");
@@ -63,7 +57,7 @@ void button_task(void *arg)
             {
 
                 ESP_LOGI(TAG, "k2 :send message:");
-                ir_study();
+                ir_study();     //红外学习
             }
             else if ((int)msg.data == KEY1)
             {
@@ -73,4 +67,4 @@ void button_task(void *arg)
         }
     }
 }
-#endif
+

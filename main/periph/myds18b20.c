@@ -95,7 +95,7 @@ float ds18b20_get_data()
     //ets_delay_us(1000);
     ds18b20_write_byte(0xcc);   //跳过rom
     ds18b20_write_byte(0x44);   //温度转换指令
-    vTaskDelay(100 / portTICK_RATE_MS); //!wait the change
+    vTaskDelay(100 / portTICK_RATE_MS); //!wait the change 等待温度转换完成
 
     if(ds18b20_reset()!=1)
         return 0.0;

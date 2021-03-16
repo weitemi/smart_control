@@ -19,17 +19,17 @@ static const int rx_channel = RMT_RX_CHANNEL;
 static const int tx_channel = RMT_TX_CHANNEL;
 
 
-//EXT_RAM_ATTR static char nvs_key[100] = {0};
-EXT_RAM_ATTR uint16_t decoded[1024] = {0}; //二进制文件解码的数据
 
-struct AC_Control ac_handle; //空调对象（基于irext）
-//IR_Msg_handle ir_msg;        //红外消息（用于其他）
+EXT_RAM_ATTR uint16_t decoded[1024] = {0}; //红外二进制文件解码的数据
 
-TaskHandle_t ir_tx_handle, ir_rx_handle;
-//ir_tx_type_t tx_type; //发射类型，目前3种
+static struct AC_Control ac_handle; //空调对象（基于irext）
 
+
+TaskHandle_t ir_tx_handle;
 //限制对红外的操作，不能同时出现收发
 static SemaphoreHandle_t IR_sem;
+
+//红外码库二进制文件的路径
 const char *ir_code_lib[] = {
     //格力码库
     "/spiffs/gree/ac_gree_1.bin",
@@ -92,7 +92,7 @@ int ac_set_code_lib(enum ac_band b, enum ac_pro_code code)
  */
 inline void ac_control()
 {
-    //ir_tx_irext(ir_code_lib[ac_handle.band * 5 + ac_handle.pro_code]);
+    
     xSemaphoreTake(IR_sem, portMAX_DELAY);
     xTaskNotifyGive(ir_tx_handle);
 }
@@ -411,6 +411,7 @@ static void nec_rx_init()
 
 /*
  * 开启红外接收
+ * 该函数会让rmt_ir_rxTask()退出阻塞，接收到数据
  */
 void ir_study()
 {
@@ -514,7 +515,7 @@ static int ir_code_lib_update(struct RX_signal *sig)
 }
 /*---------------------------------------接收发送任务函数----------------------------------------------------*/
 /*
- * 红外接收任务 ir_rx()执行后才会接收数据
+ * 红外接收任务 rmt_rx_start()执行后才会接收数据
  * 接收的数据以item的数据结构存放到nvs
 */
 void rmt_ir_rxTask(void *agr)
@@ -528,7 +529,7 @@ void rmt_ir_rxTask(void *agr)
     while (rb)
     {
 
-        //从ringbuff读取items 会进入阻塞 直到ringbuff中有新的数据 或阻塞时间到
+        //从ringbuff读取items 会进入阻塞 直到ringbuff中有新的数据
         rmt_item32_t *item = (rmt_item32_t *)xRingbufferReceive(rb, &rx_size, portMAX_DELAY);
         if (item)
         {
@@ -544,22 +545,13 @@ void rmt_ir_rxTask(void *agr)
                 sig.highlevel_0 = 0;
                 sig.encode = 0;
 
-                //todo 识别
                 //解析item
                 parse_items(item, item_num, &sig);
 
-                ir_code_lib_update(&sig);
+                ir_code_lib_update(&sig);   //更新ac_handle
                 rmt_rx_stop(rx_channel); //暂停接收
                 xSemaphoreGive(IR_sem);  //释放信号量
-#if 0
-                //将item放入nvs
-                if(nvs_save_items(item, rx_size, nvs_key) == ESP_OK)
-                {
-                    ESP_LOGI(TAG, "save rx data to nvs,key = %s",nvs_key);
-                    rmt_rx_stop(rx_channel);   //暂停接收
-                    xSemaphoreGive(IR_sem);     //释放信号量
-                }
-#endif
+
             }
 
             //解析出数据后释放ringbuff的空间
@@ -583,7 +575,7 @@ void rmt_ir_txTask(void *agr)
 
         ESP_LOGI(TAG, "ir_tx_irext:power=%d,temperature =%d", ac_handle.status.ac_power, ac_handle.status.ac_temp);
 
-        //打开irext库二进制文件
+        //打开ac_handle的irext库二进制文件
         if (ir_file_open(1, 0, ir_code_lib[ac_handle.band * 5 + ac_handle.pro_code]) != 0)
         {
             ESP_LOGI(TAG, "open file fail");
@@ -606,10 +598,10 @@ void rmt_ir_txTask(void *agr)
 
         size = (sizeof(rmt_item32_t) * item_num);
         item = (rmt_item32_t *)malloc(size);
-        irext_build(item, item_num); //构建item集合
+        irext_build(item, item_num); //使用序列构建item
 
         ESP_LOGI(TAG, "write item num = %d", item_num);
-        //item集合构建完成
+       
         rmt_write_items(tx_channel, item, item_num, true); //将item集合写入发射通道的RAM
 
         rmt_wait_tx_done(tx_channel, portMAX_DELAY); //发射红外载波
@@ -621,8 +613,9 @@ void rmt_ir_txTask(void *agr)
     vTaskDelete(NULL);
 }
 /*
-* 红外初始化
-* brief：初始化红外的相关变量。红外外设。创建接收任务
+ * 红外初始化
+ * brief：初始化红外的相关变量。红外外设。创建接收任务
+ * 返回：1成功
 */
 int IR_init()
 {
@@ -654,6 +647,7 @@ int storage_init()
     const char *TAG = "STORAGE";
     esp_log_level_set(TAG, ESP_LOG_INFO);
 
+    ESP_LOGI(TAG, "Initializing nvs_flash");
     esp_err_t err = nvs_flash_init(); //nvs初始化
     if (err == ESP_ERR_NVS_NO_FREE_PAGES)
     {
@@ -705,498 +699,3 @@ int storage_init()
 
     return 1;
 }
-#if 0
-/*
- * 计算校验码
- * 校验码由温度 定时事件 和 开关 计算
- */
-static void calculate(IR_Msg_handle msg)
-{
-    uint8_t temp = msg->temp;
-    uint8_t hour = msg->timer_hour;
-    uint8_t open = msg->open;
-
-    msg->check = (uint32_t)(temp - 18 + hour + open * 8);
-
-    msg->data1 &= ~(0xf << 28);
-    msg->data1 |= ((msg->check) << 28);
-}
-
-/*
- * 更新ir_msg data数据
- * 根据ir_msg的成员，更新data-何data1
- */
-static void ir_data_update()
-{
-
-    SET_IR_DATA(ir_msg->data0, IR0_WIDE_OPEN, IR0_MASK_OPEN, ir_msg->open);
-
-    SET_IR_DATA(ir_msg->data0, IR0_WIDE_TEMP, IR0_MASK_TEMP, ((ir_msg->temp) - 16));
-
-    SET_IR_DATA(ir_msg->data0, IR0_WIDE_WIND_SCAN, IR0_MASK_WIND_SCAN, ir_msg->scan);
-    SET_IR_DATA(ir_msg->data1, IR1_WIDE_WIND_SCAN, IR1_MASK_WIND_SCAN, ir_msg->scan);
-
-    SET_IR_DATA(ir_msg->data0, IR0_WIDE_WIND_SPEED, IR0_MASK_WIND_SPEED, ir_msg->windspeed);
-
-    calculate(ir_msg); //计算校验码
-}
-
-
-/*
- * @brief Generate NEC header value: active 9ms + negative 4.5ms
- */
-static void nec_fill_item_header(rmt_item32_t *item)
-{
-    nec_fill_item_level(item, NEC_HEADER_HIGH_US, NEC_HEADER_LOW_US);
-}
-
-/*
- * @brief 
- */
-static void nec_fill_item_connect(rmt_item32_t *item)
-{
-    nec_fill_item_level(item, NEC_CONNECT_HIGH_US, NEC_CONNECT_LOW_US);
-}
-
-/*
- * @brief Generate NEC data bit 1: positive 0.56ms + negative 1.69ms
- */
-static void nec_fill_item_bit_one(rmt_item32_t *item)
-{
-    nec_fill_item_level(item, NEC_BIT_ONE_HIGH_US, NEC_BIT_ONE_LOW_US);
-}
-
-/*
- * @brief Generate NEC data bit 0: positive 0.56ms + negative 0.56ms
- */
-static void nec_fill_item_bit_zero(rmt_item32_t *item)
-{
-    nec_fill_item_level(item, NEC_BIT_ZERO_HIGH_US, NEC_BIT_ZERO_LOW_US);
-}
-
-/*
- * @brief Generate NEC end signal: positive 0.56ms
- */
-static void nec_fill_item_end(rmt_item32_t *item)
-{
-    nec_fill_item_level(item, NEC_BIT_END, 0x7fff);
-}
-/*
- * @brief Build NEC 32bit waveform.
- */
-static void nec_build_items(rmt_item32_t *item, int item_num, uint64_t ir_data0, uint32_t ir_data1)
-{
-    int j = 0;
-    nec_fill_item_header(item++); //构建起始信号
-
-    //35位数据码
-    for (j = 0; j < 35; j++)
-    {
-        if (ir_data0 & 0x1)
-        {
-            //ESP_LOGI(TAG, "item =1");
-            nec_fill_item_bit_one(item);
-        }
-        else
-        {
-            //ESP_LOGI(TAG, "item =0");
-            nec_fill_item_bit_zero(item);
-        }
-        item++;
-
-        ir_data0 >>= 1;
-    }
-
-    //连接信号
-    nec_fill_item_connect(item);
-    item++;
-    //32位数据码
-    for (j = 0; j < 32; j++)
-    {
-        if (ir_data1 & 0x1)
-        {
-            //ESP_LOGI(TAG, "item =1");
-            nec_fill_item_bit_one(item);
-        }
-        else
-        {
-            //ESP_LOGI(TAG, "item =0");
-            nec_fill_item_bit_zero(item);
-        }
-        item++;
-
-        ir_data1 >>= 1;
-    }
-    nec_fill_item_end(item);
-}
-/*
- * 将item里的电平反转
- */
-static int item_reversal(rmt_item32_t *item, int item_num)
-{
-    rmt_item32_t *it = item;
-    for (int i = 0; i < item_num; i++)
-    {
-        it->level0 = 1;
-        it->level1 = 0;
-        it++;
-    }
-
-    return 1;
-}
-/*
- * @brief Check whether duration is around target_us
- * 检查item里时间是否是目标时间
- */
-inline bool nec_check_in_range(int duration_ticks, int target_us, int margin_us)
-{
-    if(( NEC_ITEM_DURATION(duration_ticks) < (target_us + margin_us))
-        && ( NEC_ITEM_DURATION(duration_ticks) > (target_us - margin_us))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-/*
- * @brief Check whether this value represents an NEC header
- * 检查是否是红外的起始信号
- */
-static bool nec_header_if(rmt_item32_t* item)
-{
-    
-    //ESP_LOGI(TAG, "item head %u, %u, %u, %u", NEC_ITEM_DURATION(item->level0), NEC_ITEM_DURATION(item->duration0), NEC_ITEM_DURATION(item->level1), NEC_ITEM_DURATION(item->duration1));
-    
-    if((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL)
-        && nec_check_in_range(item->duration0, NEC_HEADER_HIGH_US, NEC_BIT_MARGIN)
-        && nec_check_in_range(item->duration1, NEC_HEADER_LOW_US, NEC_BIT_MARGIN)) {
-        return true;
-    }
-    return false;
-}
-
-/*
- * @brief Check whether this value represents an NEC data bit 1
- */
-static bool nec_bit_one_if(rmt_item32_t* item)
-{
-    
-    if((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL)
-        && nec_check_in_range(item->duration0, NEC_BIT_ONE_HIGH_US, NEC_BIT_MARGIN)
-        && nec_check_in_range(item->duration1, NEC_BIT_ONE_LOW_US, NEC_BIT_MARGIN)) {
-        return true;
-    }
-    return false;
-}
-
-/*
- * @brief Check whether this value represents an NEC data bit 0
- */
-static bool nec_bit_zero_if(rmt_item32_t* item)
-{
-    if((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL)
-        && nec_check_in_range(item->duration0, NEC_BIT_ZERO_HIGH_US, NEC_BIT_MARGIN)
-        && nec_check_in_range(item->duration1, NEC_BIT_ZERO_LOW_US, NEC_BIT_MARGIN)) {
-        return true;
-    }
-    return false;
-}
-
-static bool nec_bit_connect_if(rmt_item32_t* item)
-{
-    //ESP_LOGI(TAG, "item connect %u, %u, %u, %u", NEC_ITEM_DURATION(item->level0), NEC_ITEM_DURATION(item->duration0), NEC_ITEM_DURATION(item->level1), NEC_ITEM_DURATION(item->duration1));
-    if((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL)
-        && nec_check_in_range(item->duration0, NEC_CONNECT_HIGH_US, NEC_BIT_MARGIN)
-        && nec_check_in_range(item->duration0, NEC_CONNECT_LOW_US, NEC_BIT_MARGIN))
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-/*
- * 解析从item中的信息
-*/
-static int nec_parse_items(rmt_item32_t* item, int item_num, uint64_t* data0, uint32_t* data1)
-{
-    int i;
-    uint64_t temp0 = 0;
-    uint32_t temp1 = 0;
-
-    //接收的数据长度不小于一次传输的长度
-    if(item_num < NEC_DATA_ITEM_NUM)
-    {
-        return -1;
-    }
-
-    //检查起始位
-    if(!nec_header_if(item))
-    {
-        return -2;
-    }
-    item++;
-
-    //检查数据位
-    for(i = 0; i < 35; i++)
-    {
-        //ESP_LOGI(TAG, "item data0 %u, %u, %u, %u", NEC_ITEM_DURATION(item->level0), NEC_ITEM_DURATION(item->duration0), NEC_ITEM_DURATION(item->level1), NEC_ITEM_DURATION(item->duration1));
-
-        if(nec_bit_one_if(item))
-        {
-            //左移操作不能超过31位
-            if(i>31)
-            {
-                temp0 |= (0x100000000 << ( i % 32));    
-            }else
-            {
-                temp0 |= (1<<i);
-            }
-            
-            //ESP_LOGI(TAG, "item =1");
-            //ESP_LOGI(TAG, "temp0 = 0x%llx",temp0);
-        }else if(nec_bit_zero_if(item))
-        {
-            //ESP_LOGI(TAG, "item =0");
-            temp0 |= (0<<i);
-        }else 
-        {
-            //ESP_LOGI(TAG, "item i= %d", i);
-            return -3;
-        }
-        item++;
-    }
-
-    //检查连接段信号
-    if(nec_bit_connect_if(item))
-    {
-        return -4;
-    }
-    item ++;
-
-    //检查第二段信号
-    for(i = 0; i < 31; i++)
-    {
-        //ESP_LOGI(TAG, "item data1 %u, %u, %u, %u", NEC_ITEM_DURATION(item->level0), NEC_ITEM_DURATION(item->duration0), NEC_ITEM_DURATION(item->level1), NEC_ITEM_DURATION(item->duration1));
-        if(nec_bit_one_if(item))
-        {
-            //ESP_LOGI(TAG, "item =1");
-            temp1 |= (1<<i);
-        }else if(nec_bit_zero_if(item))
-        {
-            //ESP_LOGI(TAG, "item =0");
-            temp1 |= (0<<i);
-        }else 
-        {
-            //ESP_LOGI(TAG, "item i= %d", i);
-            return -5;
-        }
-        item++;
-    }
-
-    *data0 = temp0;
-    *data1 = temp1;
-    return 0;
-}
-/*
- * 开启接收 接收一次数据后会自动关闭 数据保存在nvs的ir_data库
- * key :保存的数据的key
- */
-int ir_rx(const char *key)
-{
-    //IR_sem 防止同时收发
-    xSemaphoreTake(IR_sem, portMAX_DELAY);
-    strncpy(nvs_key, key, 100);
-
-    rmt_tx_stop(tx_channel); //暂停发射，防止影响接收
-
-    rmt_rx_start(rx_channel, 1); //开始接收
-
-    return 1;
-}
-
-/*
-* 发射nvs库中的红外数据 
-* key，nvs库键
-*/
-int ir_tx_nvs(const char *key)
-{
-    xSemaphoreTake(IR_sem, portMAX_DELAY);
-    tx_type = 1;
-    //通知发射任务
-    strncpy(nvs_key, key, 100);
-    xTaskNotifyGive(ir_tx_handle);
-
-    return 1;
-}
-
-/*
-* 发射格力红外空调 
-* ir_msg ：红外信息结构体
-*/
-int ir_tx_msg()
-{
-    xSemaphoreTake(IR_sem, portMAX_DELAY); //可以发送？
-    //更新ir_msg结构体
-    ir_data_update();
-    tx_type = 2;
-    //通知发射任务
-    xTaskNotifyGive(ir_tx_handle);
-
-    return 1;
-}
-/*
- * brief：根据红外的编码库发送
- * fn:编码库名称
-*/
-int ir_tx_irext(const char *fn)
-{
-    xSemaphoreTake(IR_sem, portMAX_DELAY); //可以发送？
-    tx_type = 3;
-    strncpy(filepath, fn, 100);
-    xTaskNotifyGive(ir_tx_handle);
-
-    return 1;
-}
-/**
- * 红外发送任务 
- */
-void rmt_ir_txTask(void *agr)
-{
-    rmt_item32_t *item; //发射item
-    size_t size = 0;    //item所需内存
-    int item_num = 0;
-    while (1)
-    {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY); //等待通知
-
-        //根据发送类型读取不同的item
-        switch (tx_type)
-        {
-        //使用nvs库中的数据发射
-        case IR_TX_TYPE_NVS:
-
-            ESP_LOGI(TAG, "ir_tx_nvs");
-
-            item = nvs_get_items(&size, nvs_key); //取得nvs库中的item
-
-            item_num = size / 4; //一个item 有4 byte大
-            ESP_LOGI(TAG, "ir_tx_nvs,key = %s size = %u", nvs_key, size);
-
-            break;
-
-        case IR_TX_TYPE_MSG:
-            ESP_LOGI(TAG, "ir_tx_msg");
-            item_num = NEC_DATA_ITEM_NUM;             //item数量固定70 格力协议
-            size = (sizeof(rmt_item32_t) * item_num); //计算item集合所需的字节空间
-            item = (rmt_item32_t *)malloc(size);
-            memset((void *)item, 0, size); //初始化item为0
-
-            nec_build_items(item, item_num, ir_msg->data0, ir_msg->data1); //根据要发射的数据，构建item集合
-
-            break;
-
-        //使用irext库发射
-        case IR_TX_TYPE_IREXT:
-
-            ESP_LOGI(TAG, "ir_tx_irext:power=%d,temperature =%d", ac_handle.status.ac_power, ac_handle.status.ac_temp);
-
-            //打开irext库二进制文件
-            if (ir_file_open(1, 0, filepath) != 0)
-            {
-                ESP_LOGI(TAG, "open file fail");
-                goto tx_exit;
-            }
-
-            //根据ac_handle.status的信息解码出特定的红外序列
-            uint16_t decode_len = ir_decode(KEY_AC_POWER, decoded, &ac_handle.status, 0);
-
-            //检查序列长度
-            if (decode_len > 200)
-            {
-                decode_len = (decode_len + 1) / 2;
-            }
-            //关闭irext库，释放内存
-            ir_close();
-
-            //根据红外序列构建item
-            item_num = (decode_len / 2); //解码出来的序列是重复的，取一半
-
-            size = (sizeof(rmt_item32_t) * item_num);
-            item = (rmt_item32_t *)malloc(size);
-            irext_build(item, item_num); //构建item集合
-
-            break;
-        default:
-            item = NULL;
-            break;
-        }
-
-        ESP_LOGI(TAG, "write item num = %d", item_num);
-        //item集合构建完成
-        rmt_write_items(tx_channel, item, item_num, true); //将item集合写入发射通道的RAM
-
-        rmt_wait_tx_done(tx_channel, portMAX_DELAY); //发射红外载波
-
-        free(item); //记得释放动态分配的内存
-    tx_exit:
-        xSemaphoreGive(IR_sem); //释放信号量
-    }
-    vTaskDelete(NULL);
-}
-/*
-* 红外初始化
-* brief：初始化红外的相关变量。红外外设。创建接收任务
-*/
-int IR_init()
-{
-    esp_log_level_set(TAG, ESP_LOG_INFO);
-
-    ir_msg = malloc(sizeof(struct IR_Msg_t));
-
-    //初始化红外信息
-    ir_msg->scan = IR_OPEN;
-    ir_msg->open = IR_OPEN;
-    ir_msg->temp = 24;               //24摄氏度
-    ir_msg->windspeed = IR_LOW_WIND; //低风速
-    ir_msg->timer_hour = 0;          //无定时
-    ir_msg->timer_min = 0;
-    ir_msg->check = 0;
-    ir_msg->data0 = 0x250200919;
-
-    ir_msg->data1 = 0x0f0002010;
-    ir_data_update(); //计算ir_msg
-
-    //初始化irext的红外信息
-    ac_handle.status.ac_mode = AC_MODE_COOL;
-    ac_handle.status.ac_power = AC_POWER_ON;
-    ac_handle.status.ac_temp = AC_TEMP_26;
-    ac_handle.status.ac_wind_dir = AC_SWING_ON; //开启扫风
-    ac_handle.status.ac_wind_speed = AC_WS_LOW;
-
-    vSemaphoreCreateBinary(IR_sem); //创建信号量
-
-    nec_tx_init(); //发射器初始化
-    nec_rx_init();
-
-    return 1;
-}
-void demo()
-{
-    //发射经典的格力红外
-    ir_msg->open = 1;
-    ir_tx_msg(ir_msg);
-
-    //发射nvs库中
-    ir_tx_nvs("irtest");
-
-    //接收
-    ir_rx("irtest");
-
-    //发射码库中的
-    ac_handle.status.ac_power = AC_POWER_OFF;
-    ir_tx_irext("/spiffs/gree/ac_gree_2.bin");
-}
-#endif
