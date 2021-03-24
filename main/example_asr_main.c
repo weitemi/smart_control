@@ -46,6 +46,9 @@
 #include "esp_wifi.h"
 #include "periph_wifi.h"
 #include "esp_event.h"
+#include "myuart.h"
+
+#include "lwip/sockets.h"
 
 static const char *TAG = "main.c";
 
@@ -64,6 +67,9 @@ static const char *TAG = "main.c";
 #define IR_TX_TASK_SIZE 2048
 #define HTTP_GET_WEATHER_TASK_SIZE 4096
 #define HEAP_MANAGER_TASK_SIZE 2048
+
+#define HOST_IP_ADDR "192.168.3.1"
+#define PORT "82"
 
 typedef enum
 {
@@ -125,28 +131,6 @@ typedef enum
 static esp_err_t asr_multinet_control(int commit_id);
 void heap_manager_task(void *agr);
 
-/*
- * 板子所有io的初始化
- */
-int led_init()
-{
-    esp_err_t err = 0;
-    gpio_config_t led;
-    led.mode = GPIO_MODE_OUTPUT;
-    led.pin_bit_mask = (1ULL << LED);
-    led.intr_type = GPIO_INTR_DISABLE;
-    led.pull_down_en = 0;
-    led.pull_up_en = 0;
-    err = gpio_config(&led);
-    if (err != ESP_OK)
-    {
-
-        ESP_LOGI(TAG, "led fail");
-        return ESP_FAIL;
-    }
-    gpio_set_level(GPIO_NUM_18, 1);
-    return ESP_OK;
-}
 void app_main()
 {
 
@@ -154,6 +138,7 @@ void app_main()
     esp_log_level_set(TAG, ESP_LOG_INFO);
     esp_err_t err;
 
+    uart_init();
     storage_init();
     led_init();
 
@@ -169,69 +154,80 @@ void app_main()
 
     xTaskCreate(rmt_ir_rxTask, "ir_rx", IR_RX_TASK_SIZE, NULL, IR_RX_TASK_PRO, NULL);
 
-    wifi_init_sta();
+
+    ds18b20_get_data(); //首次上电需要读取一次
+
     httptask_init();
-    xTaskCreate(clock_task, "clock_Task", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, NULL); //不完善
+
+    wifi_init_sta();
+    
+    
+    xTaskCreate(clock_task, "clock_Task", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, NULL);
 
 #if USE_HEAP_MANGER
     xTaskCreate(heap_manager_task, "heap_manager_task", HEAP_MANAGER_TASK_SIZE, NULL, HEAP_MANAGER_TASK_PRO, NULL);
 #endif
 
     ESP_LOGI(TAG, "Initialize SR wn handle");
-    esp_wn_iface_t *wakenet;
-    model_coeff_getter_t *model_coeff_getter;
-    model_iface_data_t *model_wn_data;
-    const esp_mn_iface_t *multinet = &MULTINET_MODEL;
+    esp_wn_iface_t *wakenet;    //唤醒模型
+    model_coeff_getter_t *model_coeff_getter;   //神经网络系数获取
+    model_iface_data_t *model_wn_data;  //识别模型的数据
+    const esp_mn_iface_t *multinet = &MULTINET_MODEL;   //识别模型
 
     // Initialize wakeNet model data
-    get_wakenet_iface(&wakenet);
-    get_wakenet_coeff(&model_coeff_getter);
-    model_wn_data = wakenet->create(model_coeff_getter, DET_MODE_90);
+    get_wakenet_iface(&wakenet);    //初始化唤醒模型
+    get_wakenet_coeff(&model_coeff_getter); //获取系数
+    model_wn_data = wakenet->create(model_coeff_getter, DET_MODE_90);   //创建唤醒模型，设置灵敏度90%
 
-    int wn_num = wakenet->get_word_num(model_wn_data);
+    int wn_num = wakenet->get_word_num(model_wn_data);  //唤醒词数量
     for (int i = 1; i <= wn_num; i++)
     {
-        char *name = wakenet->get_word_name(model_wn_data, i);
+        char *name = wakenet->get_word_name(model_wn_data, i);  //唤醒词文本
         ESP_LOGI(TAG, "keywords: %s (index = %d)", name, i);
     }
-    float wn_threshold = wakenet->get_det_threshold(model_wn_data, 1);
-    int wn_sample_rate = wakenet->get_samp_rate(model_wn_data);
-    int audio_wn_chunksize = wakenet->get_samp_chunksize(model_wn_data);
+    float wn_threshold = wakenet->get_det_threshold(model_wn_data, 1);  //获取唤醒阈值
+    int wn_sample_rate = wakenet->get_samp_rate(model_wn_data); //唤醒词采样率16k
+    int audio_wn_chunksize = wakenet->get_samp_chunksize(model_wn_data);    //内存块大小
     ESP_LOGI(TAG, "keywords_num = %d, threshold = %f, sample_rate = %d, chunksize = %d, sizeof_uint16 = %d", wn_num, wn_threshold, wn_sample_rate, audio_wn_chunksize, sizeof(int16_t));
 
     model_iface_data_t *model_mn_data = multinet->create(&MULTINET_COEFF, 4000); //语音识别时间，single模式下最大5s
-    int audio_mn_chunksize = multinet->get_samp_chunksize(model_mn_data);
-    int mn_num = multinet->get_samp_chunknum(model_mn_data);
-    int mn_sample_rate = multinet->get_samp_rate(model_mn_data);
+    int audio_mn_chunksize = multinet->get_samp_chunksize(model_mn_data);   //识别内存块
+    int mn_num = multinet->get_samp_chunknum(model_mn_data);    //唤醒词数量
+    int mn_sample_rate = multinet->get_samp_rate(model_mn_data);    //采样率16k
     ESP_LOGI(TAG, "keywords_num = %d , sample_rate = %d, chunksize = %d, sizeof_uint16 = %d", mn_num, mn_sample_rate, audio_mn_chunksize, sizeof(int16_t));
 
+    //选择所需的较大的内存块
     int size = audio_wn_chunksize;
     if (audio_mn_chunksize > audio_wn_chunksize)
     {
         size = audio_mn_chunksize;
     }
-    int16_t *buffer = (int16_t *)malloc(size * sizeof(short));
+    int16_t *buffer = (int16_t *)malloc(size * sizeof(short));  //buffer用于缓存经过流水线处理的音频
 
-    audio_pipeline_handle_t pipeline;
-    audio_element_handle_t i2s_stream_reader, filter, raw_read;
+    /*[ac101]-->i2s_stream-->filter-->raw-->[SR]*/
+    audio_pipeline_handle_t pipeline;   //音频输入流水线
+    audio_element_handle_t i2s_stream_reader, filter, raw_read; //流水线车间
 
-    bool enable_wn = true;
+    bool enable_wn = true;  //唤醒使能
     uint32_t mn_count = 0;
 
     ESP_LOGI(TAG, "[ 1 ] Start codec chip");
 
     ESP_LOGI(TAG, "[ 2.0 ] Create audio pipeline for recording");
+    //流水线初始化
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
     pipeline = audio_pipeline_init(&pipeline_cfg);
     mem_assert(pipeline);
 
+    //i2s初始化，用于与ac101通信
     ESP_LOGI(TAG, "[ 2.1 ] Create i2s stream to read audio data from codec chip");
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
     i2s_cfg.i2s_config.sample_rate = 48000;
-    i2s_cfg.type = AUDIO_STREAM_READER;
-
+    i2s_cfg.type = AUDIO_STREAM_READER; //输入流
     i2s_stream_reader = i2s_stream_init(&i2s_cfg);
+
     ESP_LOGI(TAG, "[ 2.2 ] Create filter to resample audio data");
+    //滤波器初始化，将源采样率变为16k
     rsp_filter_cfg_t rsp_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
     rsp_cfg.src_rate = 48000;
     rsp_cfg.src_ch = 2;
@@ -239,34 +235,38 @@ void app_main()
     rsp_cfg.dest_ch = 1;
     filter = rsp_filter_init(&rsp_cfg);
 
+    //raw初始化，缓存经过处理的音频数据
     ESP_LOGI(TAG, "[ 2.3 ] Create raw to receive data");
     raw_stream_cfg_t raw_cfg = {
         .out_rb_size = 8 * 1024,
-        .type = AUDIO_STREAM_READER,
+        .type = AUDIO_STREAM_READER,    //输入流
     };
     raw_read = raw_stream_init(&raw_cfg);
 
+    //将各个车间流连接到流水线
     ESP_LOGI(TAG, "[ 3 ] Register all elements to audio pipeline");
     audio_pipeline_register(pipeline, i2s_stream_reader, "i2s");
     audio_pipeline_register(pipeline, raw_read, "raw");
-
     audio_pipeline_register(pipeline, filter, "filter");
     ESP_LOGI(TAG, "[ 4 ] Link elements together [codec_chip]-->i2s_stream-->filter-->raw-->[SR]");
     const char *link_tag[3] = {"i2s", "filter", "raw"};
     audio_pipeline_link(pipeline, &link_tag[0], 3);
 
+    //运行流水线
     ESP_LOGI(TAG, "[ 5 ] waiting to be awake");
     audio_pipeline_run(pipeline);
 
     while (1)
     {
+        //读取raw的音频到buffer
         raw_stream_read(raw_read, (char *)buffer, size * sizeof(short));
         if (enable_wn)
         {
+            //检测buffer是否有唤醒词
             if (wakenet->detect(model_wn_data, (int16_t *)buffer) == WAKE_UP)
             {
 
-                gpio_set_level(GPIO_NUM_18, 0); //led亮
+                LED_ON;
                 ESP_LOGI(TAG, "wake up");
                 enable_wn = false;
             }
@@ -274,17 +274,19 @@ void app_main()
         else
         {
             mn_count++;
+            //检测buffer中是否有命令词
             int commit_id = multinet->detect(model_mn_data, buffer);
+            //进入命令词控制函数
             if (asr_multinet_control(commit_id) == ESP_OK)
             {
-                gpio_set_level(GPIO_NUM_18, 1);
+                LED_OFF;
                 enable_wn = true;
                 mn_count = 0;
             }
             if (mn_count == mn_num)
             {
                 ESP_LOGI(TAG, "stop multinet");
-                gpio_set_level(GPIO_NUM_18, 1);
+                LED_OFF;
                 enable_wn = true;
                 mn_count = 0;
             }
@@ -319,15 +321,16 @@ void app_main()
 static char *weather, string[25] = {0};
 static float temp;
 static clk_t clk;
+static int id = 0;
 /*
  * 定时器回调函数
  * 空调定时关闭
  */
 timer_cb ir_close_cb(struct timer *tmr, void *arg)
 {
-    int *id = (int *)arg;
-    
-    if (*id == 0)
+
+
+    if (id == 0)
     {
         ac_open(false);
         ESP_LOGI(TAG, "timer to close the aircon");
@@ -340,35 +343,15 @@ timer_cb ir_close_cb(struct timer *tmr, void *arg)
 
     return NULL;
 }
-/*
- * 定时器回调函数
- * 空调定时关闭，5s，测试用
- */
-timer_cb cb_5s(struct timer *tmr, void *arg)
-{
-    ESP_LOGI(TAG, "timer to close the aircon");
-    ac_open(true);
-    AC_SUCCESS_MP3;
-    return NULL;
-}
-/*
- * 定时器回调函数
- * 空调定时打开 6s，测试用
- */
-timer_cb cb_6s(struct timer *tmr, void *arg)
-{
-    ESP_LOGI(TAG, "timer to close the aircon");
-    ac_set_temp(26);
-    AC_SUCCESS_MP3;
-    return NULL;
-}
+
+
 
 /*
  * 语音识别处理函数
  */
 static esp_err_t asr_multinet_control(int commit_id)
 {
-    int id = 0;
+    
     if (commit_id >= 0 && commit_id < ID_MAX)
     {
         switch (commit_id)

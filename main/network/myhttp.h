@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-10-22 10:00:03
- * @LastEditTime: 2021-03-15 14:12:37
+ * @LastEditTime: 2021-03-24 17:47:00
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\network\myhttp.h
@@ -24,5 +24,5 @@ char *get_Time_String();
 void http_api_task(void *arg);
 void http_asr(char *recoder);
 void httptask_init();
-void update_access_token();
+int update_access_token();
 #endif

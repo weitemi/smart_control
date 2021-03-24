@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-12-19 16:48:59
- * @LastEditTime: 2021-03-16 11:03:06
+ * @LastEditTime: 2021-03-24 19:39:59
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adfd:\MyNote\clk_t\clk_t.c
@@ -11,13 +11,10 @@
 #include "esp_log.h"
 
 static const char *TAG = "CLOCK";
-void clk_t_q()
-{
-	printf("clk_t\n");
-}
+
 
 #define SIZEOFclk_t 4
-
+static bool global_clk_init_flag = false;
 struct timer *timer_list = NULL;
 
 /*
@@ -333,12 +330,18 @@ void tmr_set_global(clk_t conf)
  * 获取当前网络时间
  * 返回：时间结构体
  */
-clk_t get_current_nettime()
+int get_current_nettime(clk_t *conf)
 {
-	char *origin = get_Time_String(); //get the net time string
-
+	char *origin = get_Time_String(); //调用myhttp.c,获取时间字符串："2021-03-24 04:49:53"
+	if(origin==NULL)
+	{
+		printf("get network time err\n");
+		return ESP_FAIL;
+	}
 	char str[6][10] = {'\0'}; //year,month,date,hour,minute,second
-	printf("origin = %s\n", origin);
+	//printf("origin = %s\n", origin);
+
+	//分别提取出时间
 	for (int i = 0; i <= 5; i++)
 	{
 		char *c = str[i];
@@ -355,19 +358,21 @@ clk_t get_current_nettime()
 		origin++;
 	}
 	unsigned int x[6] = {0};
+	//将字符串转换成数字
 	for (int i = 0; i < 6; i++)
 	{
 		x[i] = (unsigned int)atoi(str[i]);
 		printf("x = %d\n", x[i]);
 	}
-	clk_t conf;
-	conf.cal.year = x[0] - 2000;
-	conf.cal.month = x[1];
-	conf.cal.date = x[2];
-	conf.cal.hour = x[3] + 8;
-	conf.cal.minute = x[4];
-	conf.cal.second = x[5];
-	return conf;
+	//赋值给时间结构体
+
+	conf->cal.year = x[0] - 2000;
+	conf->cal.month = x[1];
+	conf->cal.date = x[2];
+	conf->cal.hour = x[3] + 8;
+	conf->cal.minute = x[4];
+	conf->cal.second = x[5];
+	return ESP_OK;
 }
 
 /*
@@ -375,8 +380,15 @@ clk_t get_current_nettime()
  */
 timer_cb update_global_cb(struct timer *tmr, void *agr)
 {
-	clk_t t = get_current_nettime();
-	tmr_set_global(t); //更新全局时间
+	clk_t *t = (clk_t *)malloc(sizeof(clk_t));
+	//无法更新时间
+	if(get_current_nettime(t)==ESP_OK)
+	{
+		tmr_set_global(*t); //更新全局时间
+	}
+	
+	free(t);
+	
 	tmr->timeout.value = global_clk.value;
 	tmr->timeout.cal.date += 1;
 
@@ -392,9 +404,12 @@ void clock_task(void *arg)
 	esp_log_level_set(TAG, ESP_LOG_INFO);
 	while (1)
 	{
-
+		
 		vTaskDelay(1000 / portTICK_RATE_MS);
-		tmr_process(NULL);
+
+		//未初始化，不能正常运行
+		if(global_clk_init_flag)
+			tmr_process(NULL);
 	}
 }
 
@@ -404,9 +419,20 @@ void clock_task(void *arg)
  */
 int global_clk_init()
 {
-	clk_t t = get_current_nettime();
-	tmr_set_global(t); //更新全局时间
-	t.cal.date += 1;
-	tmr_new(&t, update_global_cb, NULL, "UPDATE"); //创建定时器，每24小时更新网络时间
-	return 1;
+	if(global_clk_init_flag)
+		return ESP_FAIL;
+	clk_t *t = (clk_t *)malloc(sizeof(clk_t));
+	
+	if(get_current_nettime(t)!=ESP_OK)
+	{
+		free(t);
+		return ESP_FAIL;
+	}
+	tmr_set_global(*t); //更新全局时间
+	
+	t->cal.date += 1;
+	tmr_new(t, update_global_cb, NULL, "UPDATE"); //创建定时器，每24小时更新网络时间，并添加到列表
+	global_clk_init_flag = true;
+	free(t);
+	return ESP_OK;
 }

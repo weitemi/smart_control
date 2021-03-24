@@ -79,8 +79,7 @@ enum ac_pro_code
 //品牌+协议编码 = 红外码库
 struct AC_Control
 {
-    enum ac_band band;  //品牌
-    enum ac_pro_code pro_code;   //协议编码
+    uint8_t code;
     t_remote_ac_status status;  //空调控制结构体
 };
 
@@ -101,8 +100,7 @@ struct RX_signal
 
 
 TaskHandle_t ir_tx_handle;
-
-int ac_set_code_lib(enum ac_band b, enum ac_pro_code code);
+uint8_t ac_set_code_lib(uint8_t band, uint8_t pro_code);
 int ac_set_temp(int temp);
 int ac_open(bool open);
 int ac_set_wind_speed(int speed);

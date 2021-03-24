@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-10-25 15:01:11
- * @LastEditTime: 2021-03-16 10:29:55
+ * @LastEditTime: 2021-03-24 19:40:40
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\periph\buttonTask.c
@@ -14,6 +14,10 @@
 #include "periph_button.h"
 #include "esp_log.h"
 #include "board.h"
+#include "mynvs.h"
+#include "driver/gpio.h"
+#include "myhttp.h"
+
 
 static const char *TAG = "buttonTask";
 
@@ -55,16 +59,37 @@ void button_task(void *arg)
 
             if ((int)msg.data == KEY2)
             {
-
-                ESP_LOGI(TAG, "k2 :send message:");
+                
+                //ESP_LOGI(TAG, "k2 :send message:");
                 ir_study();     //红外学习
             }
             else if ((int)msg.data == KEY1)
             {
 
-                 ESP_LOGI(TAG, "k1");
             }
         }
     }
 }
 
+/*
+ * led的初始化
+ */
+int led_init()
+{
+    esp_err_t err = 0;
+    gpio_config_t led;
+    led.mode = GPIO_MODE_OUTPUT;
+    led.pin_bit_mask = (1ULL << LED);
+    led.intr_type = GPIO_INTR_DISABLE;
+    led.pull_down_en = 0;
+    led.pull_up_en = 0;
+    err = gpio_config(&led);
+    if (err != ESP_OK)
+    {
+
+        ESP_LOGI(TAG, "led fail");
+        return ESP_FAIL;
+    }
+    gpio_set_level(GPIO_NUM_18, 1);
+    return ESP_OK;
+}

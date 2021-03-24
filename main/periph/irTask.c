@@ -12,18 +12,16 @@
 #define HAIER_CODE_3 0x8565
 #define HAIER_CODE_5 0x73565
 
-
 static const char *TAG = "IR_task";
 
 static const int rx_channel = RMT_RX_CHANNEL;
 static const int tx_channel = RMT_TX_CHANNEL;
 
-
-
 EXT_RAM_ATTR uint16_t decoded[1024] = {0}; //红外二进制文件解码的数据
 
 static struct AC_Control ac_handle; //空调对象（基于irext）
 
+static uint8_t band, pro_code;
 
 TaskHandle_t ir_tx_handle;
 //限制对红外的操作，不能同时出现收发
@@ -79,12 +77,14 @@ const char *ir_code_lib[] = {
     "/spiffs/aokesi/ac_aux_4.bin",
 };
 /*----------------------------------------------空调功能设置----------------------------------------------------------------------*/
-int ac_set_code_lib(enum ac_band b, enum ac_pro_code code)
+/*
+ * 设置空调编码，并保存到nvs
+ */
+uint8_t ac_set_code_lib(uint8_t band,uint8_t pro_code)
 {
-    ac_handle.band = b;
-    ac_handle.pro_code = code;
+    ac_handle.code = band * 4 + pro_code;
+    return nvs_save_ac_code(ac_handle.code, AC_DEFAULT);
 
-    return 0;
 }
 
 /*
@@ -92,7 +92,7 @@ int ac_set_code_lib(enum ac_band b, enum ac_pro_code code)
  */
 inline void ac_control()
 {
-    
+
     xSemaphoreTake(IR_sem, portMAX_DELAY);
     xTaskNotifyGive(ir_tx_handle);
 }
@@ -248,25 +248,25 @@ static bool check_header(rmt_item32_t *item)
     if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL) && check_in_duration(item->duration0, HEADER_HIGH_9000US, NEC_BIT_MARGIN) && check_in_duration(item->duration1, HEADER_LOW_4500US, NEC_BIT_MARGIN))
     {
         //GREE 全系
-        ac_handle.band = band_gree;
+        band = band_gree;
         return true;
     }
     else if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL) && check_in_duration(item->duration0, HEADER_LOW_4500US, NEC_BIT_MARGIN) && check_in_duration(item->duration1, HEADER_LOW_4500US, NEC_BIT_MARGIN))
     {
         //美的1号
-        ac_handle.band = band_meidi;
+        band = band_meidi;
         return true;
     }
     else if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL) && check_in_duration(item->duration0, HEADER_LOW_4300US, NEC_BIT_MARGIN) && check_in_duration(item->duration1, HEADER_HIGH_4300US, NEC_BIT_MARGIN))
     {
         //美的2号
-        ac_handle.band = band_meidi;
+        band = band_meidi;
         return true;
     }
     else if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL) && check_in_duration(item->duration0, HEADER_LOW_5800US, NEC_BIT_MARGIN) && check_in_duration(item->duration1, HEADER_HIGH_7300US, NEC_BIT_MARGIN))
     {
         //美的4,5号
-        ac_handle.band = band_meidi;
+        band = band_meidi;
         return true;
     }
     else if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL) && check_in_duration(item->duration0, HEADER_LOW_3000US, NEC_BIT_MARGIN) && check_in_duration(item->duration1, HEADER_HIGH_3000US, NEC_BIT_MARGIN))
@@ -275,7 +275,7 @@ static bool check_header(rmt_item32_t *item)
         if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL) && check_in_duration(item->duration0, HEADER_LOW_3000US, NEC_BIT_MARGIN) && check_in_duration(item->duration1, HEADER_HIGH_4500US, NEC_BIT_MARGIN))
         {
             //海尔
-            ac_handle.band = band_haier;
+            band = band_haier;
             return true;
         }
         return false;
@@ -303,9 +303,9 @@ static int parse_items(rmt_item32_t *item, int item_num, struct RX_signal *sig)
         ESP_LOGI(TAG, "header check err;");
         return -2;
     }
-    ESP_LOGI(TAG, "band:%u", ac_handle.band);
+    ESP_LOGI(TAG, "band:%u", band);
     item++; //将item指向编码段
-    if (ac_handle.band == band_haier)
+    if (band == band_haier)
     {
         //海尔有两个起始段
         item++;
@@ -426,19 +426,19 @@ void ir_study()
  */
 static int ir_code_lib_update(struct RX_signal *sig)
 {
-    switch (ac_handle.band)
+    switch (band)
     {
     case band_gree:
         if (sig->item_num == 70 && sig->encode == GREE_CODE_2)
         {
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_gree * 5 + code_2]);
-            ac_handle.pro_code = code_2;
+            pro_code = code_2;
         }
         else if (sig->item_num == 36 && sig->encode == GREE_CODE_4)
         {
             //todo 36?
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_gree * 5 + code_4]);
-            ac_handle.pro_code = code_4;
+            pro_code = code_4;
         }
         else
         {
@@ -451,12 +451,12 @@ static int ir_code_lib_update(struct RX_signal *sig)
             if (sig->encode == MEIDI_CODE_1)
             {
                 ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_1]);
-                ac_handle.pro_code = code_1;
+                pro_code = code_1;
             }
             else if (sig->encode == MEIDI_CODE_2)
             {
                 ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_2]);
-                ac_handle.pro_code = code_2;
+                pro_code = code_2;
             }
             else
             {
@@ -468,12 +468,12 @@ static int ir_code_lib_update(struct RX_signal *sig)
             if (sig->encode == MEIDI_CODE_4)
             {
                 ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_4]);
-                ac_handle.pro_code = code_4;
+                pro_code = code_4;
             }
             else if (sig->encode == MEIDI_CODE_5)
             {
                 ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_5]);
-                ac_handle.pro_code = code_5;
+                pro_code = code_5;
             }
             else
             {
@@ -485,22 +485,22 @@ static int ir_code_lib_update(struct RX_signal *sig)
         if (sig->encode == HAIER_CODE_1)
         {
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_haier * 5 + code_1]);
-            ac_handle.pro_code = code_1;
+            pro_code = code_1;
         }
         else if (sig->encode == HAIER_CODE_2)
         {
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_2]);
-            ac_handle.pro_code = code_2;
+            pro_code = code_2;
         }
         else if (sig->encode == HAIER_CODE_3)
         {
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_3]);
-            ac_handle.pro_code = code_3;
+            pro_code = code_3;
         }
         else if (sig->encode == HAIER_CODE_5)
         {
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_5]);
-            ac_handle.pro_code = code_5;
+            pro_code = code_5;
         }
         else
         {
@@ -510,7 +510,9 @@ static int ir_code_lib_update(struct RX_signal *sig)
     default:
         return -1;
     }
-
+    
+    ac_set_code_lib(band,pro_code);
+    
     return 0;
 }
 /*---------------------------------------接收发送任务函数----------------------------------------------------*/
@@ -538,8 +540,8 @@ void rmt_ir_rxTask(void *agr)
             //!红外线接收器有干扰，需要滤波
             if (rx_size > 30)
             {
-                struct RX_signal sig;
-                size_t item_num = rx_size / 4;
+                struct RX_signal sig;   //接收信号结构体
+                size_t item_num = rx_size / 4;  //一个item32bit
                 sig.item_num = item_num;
                 sig.highlevel_1 = 0;
                 sig.highlevel_0 = 0;
@@ -548,10 +550,9 @@ void rmt_ir_rxTask(void *agr)
                 //解析item
                 parse_items(item, item_num, &sig);
 
-                ir_code_lib_update(&sig);   //更新ac_handle
-                rmt_rx_stop(rx_channel); //暂停接收
-                xSemaphoreGive(IR_sem);  //释放信号量
-
+                ir_code_lib_update(&sig); //更新ac_handle
+                rmt_rx_stop(rx_channel);  //暂停接收
+                xSemaphoreGive(IR_sem);   //释放信号量
             }
 
             //解析出数据后释放ringbuff的空间
@@ -574,9 +575,9 @@ void rmt_ir_txTask(void *agr)
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY); //等待通知
 
         ESP_LOGI(TAG, "ir_tx_irext:power=%d,temperature =%d", ac_handle.status.ac_power, ac_handle.status.ac_temp);
-
+        ESP_LOGI(TAG, "using code lib:%s", ir_code_lib[ac_handle.code]);
         //打开ac_handle的irext库二进制文件
-        if (ir_file_open(1, 0, ir_code_lib[ac_handle.band * 5 + ac_handle.pro_code]) != 0)
+        if (ir_file_open(1, 0, ir_code_lib[ac_handle.code]) != 0)
         {
             ESP_LOGI(TAG, "open file fail");
             goto tx_exit;
@@ -601,7 +602,7 @@ void rmt_ir_txTask(void *agr)
         irext_build(item, item_num); //使用序列构建item
 
         ESP_LOGI(TAG, "write item num = %d", item_num);
-       
+
         rmt_write_items(tx_channel, item, item_num, true); //将item集合写入发射通道的RAM
 
         rmt_wait_tx_done(tx_channel, portMAX_DELAY); //发射红外载波
@@ -614,7 +615,7 @@ void rmt_ir_txTask(void *agr)
 }
 /*
  * 红外初始化
- * brief：初始化红外的相关变量。红外外设。创建接收任务
+ * brief：初始化红外的相关变量。红外外设。创建任务
  * 返回：1成功
 */
 int IR_init()
@@ -628,10 +629,32 @@ int IR_init()
     ac_handle.status.ac_wind_dir = AC_SWING_ON; //开启扫风
     ac_handle.status.ac_wind_speed = AC_WS_LOW;
 
-    ac_handle.band = band_gree;
-    ac_handle.pro_code = code_2;
+    uint8_t *temp;  //缓存码库编号
+    //从nvs读取码库编号
+    temp = nvs_get_ac_lib(AC_DEFAULT);
+    
+    //第一次使用，nvs中无保存码库编号
+    if (temp == NULL)
+    {
+        ESP_LOGI(TAG, "use default code lib");
+        //没有编号，使用默认编号
+        band = band_gree;
+        pro_code = code_3;
+        
+        if (ac_set_code_lib(band, pro_code) != ESP_OK) //保存到nvs
+        {
+            ESP_LOGI(TAG, "save ac code from nvs fail");
+        }
+        ESP_LOGI(TAG, "set ac lib to default:%u", ac_handle.code);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "nvs_get_ac_lib temp=%u", *temp);
+        ac_handle.code = *temp; //成功读取nvs的数据，保存到ac_handle
+        free(temp);
+    }
 
-    vSemaphoreCreateBinary(IR_sem); //创建信号量
+    vSemaphoreCreateBinary(IR_sem); //创建信号量，用于同步发射接收
 
     nec_tx_init(); //发射器初始化
     nec_rx_init();

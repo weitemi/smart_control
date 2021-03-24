@@ -14,16 +14,16 @@ char baidu_access_token[80] = "24.fa404e41d09ac1b28eecd91edbf6d238.2592000.16170
 #define TIME_URL "https://api.uukit.com/time"
 
 #define MX_HTTP_BUFF 2048
-EXT_RAM_ATTR static char http_data[MX_HTTP_BUFF]={0}; //! 需要定义为全局静态变量，否则会导致任务的堆栈溢出
+EXT_RAM_ATTR static char http_data[MX_HTTP_BUFF] = {0}; //! 需要定义为全局静态变量，否则会导致任务的堆栈溢出
 
 const int GET_TIME_BIT = BIT0;
 const int GET_WEATHER_BIT = BIT1;
-const int GET_TIME_OK_BIT = BIT2;
-const int GET_WEATHER_OK_BIT = BIT3;
 const int UPDATE_TOKEN_BIT = BIT4;
 
-static EventGroupHandle_t http_api_evengroup;  //api任务事件组 
 
+static EventGroupHandle_t http_api_evengroup; //api任务事件组
+
+QueueHandle_t res_queue;    //http处理结果
 
 /*
  * http传输过程回调函数
@@ -37,37 +37,37 @@ esp_err_t http_event_handle(esp_http_client_event_t *evt)
     switch (evt->event_id)
     {
     case HTTP_EVENT_ERROR:
-        printf( "http_err\r\n");
+        printf("http_err\r\n");
         break;
     case HTTP_EVENT_ON_CONNECTED:
-        printf( "http connected \r\n");
+        printf("http connected \r\n");
         break;
     case HTTP_EVENT_HEADER_SENT:
         //printf( "http send data\r\n");
         break;
     case HTTP_EVENT_ON_HEADER:
         //printf( "http fetch header\r\n");
-        
+
         break;
     case HTTP_EVENT_ON_DATA:
         //正在接收数据
         //printf( "http receive data,len=%d\r\n", evt->data_len);
         //printf("---http data---\r\n%.*s \r\n ---data end--- \r\n", evt->data_len, (char *)evt->data);
-        
-        memcpy(evt->user_data+index, evt->data, evt->data_len); //将http数据复制到指定内存
-        index += evt->data_len; //下标增加
+
+        memcpy(evt->user_data + index, evt->data, evt->data_len); //将http数据复制到指定内存
+        index += evt->data_len;                                   //下标增加
 
         break;
     case HTTP_EVENT_ON_FINISH:
-        printf( "http receive finish\r\n");
-        
+        printf("http receive finish\r\n");
+
         //printf("---http receive buff---\r\n %.*s \r\n ---buff end--- \r\n", index, (char *)evt->user_data);
-        index = 0;  //数据传输完成
-        
-        break; 
+        index = 0; //数据传输完成
+
+        break;
     case HTTP_EVENT_DISCONNECTED:
-        printf( "http disconnected\r\n");
-        
+        printf("http disconnected\r\n");
+
         break;
     default:
         break;
@@ -77,31 +77,37 @@ esp_err_t http_event_handle(esp_http_client_event_t *evt)
 
 /*
  * 更新百度token
- * 
+ * 返回：ESP_OK
  */
-void update_access_token()
+int update_access_token()
 {
-    xEventGroupSetBits(http_api_evengroup, UPDATE_TOKEN_BIT);   //设置http_api_evengroup，同步http_api_task
-
+    int msg = 0;
+    xEventGroupSetBits(http_api_evengroup, UPDATE_TOKEN_BIT); //设置http_api_evengroup，同步http_api_task
+    //int bit = xEventGroupWaitBits(http_api_evengroup, UPDATE_TOKEN_OK_BIT, pdTRUE, pdFALSE, portMAX_DELAY); //等待http_api_task获取天气数据
+    xQueueReceive(res_queue, &msg, portMAX_DELAY);
+    return msg;
 }
 /*
  * 获取天气数据字符串 
  * day:0,今天 1,明天,2后天
  * 返回：天气数据字符串指针
  */
-static char str_weather[3][100]={0};    //存放天气字符串
+static char str_weather[3][100] = {0}; //存放天气字符串
 char *get_Weather_String(int day)
 {
+    int msg = 0;
     //检查day
-    if(day<0||day>2)
+    if (day < 0 || day > 2)
     {
         return NULL;
     }
-    xEventGroupSetBits(http_api_evengroup, GET_WEATHER_BIT);    //设置GET_WEATHER_BIT，同步http_api_task
 
-    int bit = xEventGroupWaitBits(http_api_evengroup, GET_WEATHER_OK_BIT, pdTRUE, pdFALSE, portMAX_DELAY);  //等待http_api_task获取天气数据
+    xEventGroupSetBits(http_api_evengroup, GET_WEATHER_BIT); //设置GET_WEATHER_BIT，同步http_api_task
+
+    //int bit = xEventGroupWaitBits(http_api_evengroup, GET_WEATHER_OK_BIT, pdTRUE, pdFALSE, portMAX_DELAY); //等待http_api_task获取天气数据
     //若已获取天气数据，则GET_WEATHER_OK_BIT被置位，返回天气文本的地址
-    if(bit & GET_WEATHER_OK_BIT)
+    xQueueReceive(res_queue, &msg, portMAX_DELAY);
+    if (msg==ESP_OK)
     {
         return &str_weather[day][0];
     }
@@ -117,18 +123,18 @@ static char str_time[25] = {0}; //时间文本
  */
 char *get_Time_String()
 {
-    xEventGroupSetBits(http_api_evengroup, GET_TIME_BIT);   //设置GET_TIME_BIT，同步http_api_task
+    int msg = 0;
+    xEventGroupSetBits(http_api_evengroup, GET_TIME_BIT); //设置GET_TIME_BIT，同步http_api_task
 
     //等待http_api_task完成获取
-    int bit = xEventGroupWaitBits(http_api_evengroup, GET_TIME_OK_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
-
+    //int bit = xEventGroupWaitBits(http_api_evengroup, GET_TIME_OK_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
+    xQueueReceive(res_queue, &msg, portMAX_DELAY);
     //成功则返回时间数据的指针
-    if(bit & GET_TIME_OK_BIT)
+    if (msg==ESP_OK)
     {
         return str_time;
     }
     return NULL;
-
 }
 
 /*
@@ -142,9 +148,9 @@ void http_api_task(void *arg)
     //初始化http客户端
     esp_http_client_config_t config = {
         .event_handler = http_event_handle, //http回调函数
-        .user_data = (void *)http_data, //http数据缓存
+        .user_data = (void *)http_data,     //http数据缓存
     };
-
+    int res = ESP_OK;
     while (1)
     {
         //等待用户调用api（获取时间，获取天气，获取baidutoken）
@@ -154,49 +160,52 @@ void http_api_task(void *arg)
         if (!get_wifi_status())
         {
             bit = 0;
-            xEventGroupClearBits(http_api_evengroup, GET_TIME_BIT | GET_WEATHER_BIT|UPDATE_TOKEN_BIT);  //无法执行，清除标志位
+            xEventGroupClearBits(http_api_evengroup, GET_TIME_BIT | GET_WEATHER_BIT | UPDATE_TOKEN_BIT); //无法执行，清除标志位
             ESP_LOGI(TAG, "error WIFI does not connected");
+            res = ESP_FAIL;
             
         }
         //处理不同的api
-        if(bit & GET_TIME_BIT)
+        if (bit & GET_TIME_BIT)
         {
             //获取网络时间
             ESP_LOGI(TAG, "GET_TIME_BIT");
 
             memset(http_data, 0, MX_HTTP_BUFF); //清空http缓存区
-            config.url = TIME_URL;  //设置url，请求方式
+            config.url = TIME_URL;              //设置url，请求方式
             config.method = HTTP_METHOD_GET;
-            printf("start connect to url = %s\r\n",config.url);
+            printf("start connect to url = %s\r\n", config.url);
             client = esp_http_client_init(&config);
-            esp_http_client_perform(client);    //发起http连接
+            esp_http_client_perform(client); //发起http连接
             esp_http_client_close(client);
             esp_http_client_cleanup(client);
 
-            cJSON *root = cJSON_Parse(http_data);   //解析返回的时间json数据
-            if(root!=NULL)
+            cJSON *root = cJSON_Parse(http_data); //解析返回的时间json数据
+            if (root != NULL)
             {
-                cJSON *time = cJSON_GetObjectItem(root,"data");
+                cJSON *time = cJSON_GetObjectItem(root, "data");
                 time = cJSON_GetObjectItem(time, "gmt");
                 char *t = cJSON_GetStringValue(time);
-                if(t==NULL)
+                if (t == NULL)
                 {
                     ESP_LOGI(TAG, "time error");
-                }else{
+                    res = ESP_FAIL;
+                    
+                }
+                else
+                {
 
-                ESP_LOGI(TAG, "time = %s",t);
-                
-                strncpy(str_time, t, 25);   //将字符串复制到str_time
+                    ESP_LOGI(TAG, "time = %s", t);
 
-                cJSON_Delete(root);
+                    strncpy(str_time, t, 25); //将字符串复制到str_time
 
-                xEventGroupSetBits(http_api_evengroup, GET_TIME_OK_BIT);    //设置标志位，通知应用程序已完成任务
+                    cJSON_Delete(root);
+                    res = ESP_OK;
+                    //xEventGroupSetBits(http_api_evengroup, GET_TIME_OK_BIT); //设置标志位，通知应用程序已完成任务
                 }
             }
-            
-            
         }
-        if(bit & GET_WEATHER_BIT)
+        if (bit & GET_WEATHER_BIT)
         {
             //获取天气
             ESP_LOGI(TAG, "GET_WEATHER_BIT");
@@ -205,33 +214,33 @@ void http_api_task(void *arg)
             config.url = WEATHER_URL;
             config.method = HTTP_METHOD_GET;
 
-            printf("start connect to url = %s\r\n",config.url);
+            printf("start connect to url = %s\r\n", config.url);
             client = esp_http_client_init(&config);
             esp_http_client_perform(client);
             esp_http_client_close(client);
             esp_http_client_cleanup(client);
 
             cJSON *root = cJSON_Parse(http_data);
-            cJSON *code = cJSON_GetObjectItem(root,"code");
-            if(code==NULL)
+            cJSON *code = cJSON_GetObjectItem(root, "code");
+            if (code == NULL)
             {
                 cJSON_Delete(root);
-                
+                res = ESP_FAIL;
             }
             //检验代码是否是正确
-            char *code_str = cJSON_GetStringValue(code);    
-            if(strcmp(code_str,wea_code))
+            char *code_str = cJSON_GetStringValue(code);
+            if (strcmp(code_str, wea_code))
             {
                 ESP_LOGI(TAG, "get weather fail code = %s", code_str);
                 cJSON_Delete(root);
-                
+                res = ESP_FAIL;
             }
             //到这获取成功，读取实时数据
             cJSON *daily = cJSON_GetObjectItem(root, "daily");
             //获取今天，明天，后天的数据
-            for (int i = 0; i < 3;i++)
+            for (int i = 0; i < 3; i++)
             {
-   
+
                 cJSON *today = cJSON_GetArrayItem(daily, i);
                 cJSON *item = cJSON_GetObjectItem(today, "fxDate");
                 char *time = cJSON_GetStringValue(item);
@@ -248,14 +257,16 @@ void http_api_task(void *arg)
 
                 //将单词组成人能听的句子
                 //今天气温16-20度，风力1-2级，白天多云，夜晚小雨
-                snprintf(&str_weather[i][0], 100, "%s,气温%s至%s摄氏度,风力%s级,白天%s,夜晚%s.", time,tempmin,tempmax,windscale,textday,textnight);
-                xEventGroupSetBits(http_api_evengroup, GET_WEATHER_OK_BIT); //设置标志，回应应用程序
+                snprintf(&str_weather[i][0], 100, "%s,气温%s至%s摄氏度,风力%s级,白天%s,夜晚%s.", time, tempmin, tempmax, windscale, textday, textnight);
+                res = ESP_OK;
+                //xEventGroupSetBits(http_api_evengroup, GET_WEATHER_OK_BIT); //设置标志，回应应用程序
             }
 
             cJSON_Delete(root);
+            
         }
-        
-        if(bit & UPDATE_TOKEN_BIT)
+
+        if (bit & UPDATE_TOKEN_BIT)
         {
             //更新token
             ESP_LOGI(TAG, "UPDATE_TOKEN_BIT");
@@ -263,37 +274,45 @@ void http_api_task(void *arg)
             config.url = GET_TOKEN_URL;
             config.method = HTTP_METHOD_GET;
 
-            printf("start connect to url = %s\r\n",config.url);
+            printf("start connect to url = %s\r\n", config.url);
             client = esp_http_client_init(&config);
             esp_http_client_perform(client);
             esp_http_client_close(client);
             esp_http_client_cleanup(client);
 
             cJSON *root = cJSON_Parse(http_data);
-            if(root!=NULL)
+            if (root != NULL)
             {
                 cJSON *tok = cJSON_GetObjectItem(root, "access_token");
                 char *newtoken = cJSON_GetStringValue(tok); //获取新token
-                if(newtoken != NULL)
+                if (newtoken != NULL)
                 {
-                    memset(baidu_access_token, 0, 80);  //清零全局变量baidu_access_token
-                    strncpy(baidu_access_token, newtoken, 80);  //再更新
+                    memset(baidu_access_token, 0, 80);         //清零全局变量baidu_access_token
+                    strncpy(baidu_access_token, newtoken, 80); //再更新
                     ESP_LOGI(TAG, "new token = %s", baidu_access_token);
-                }else{
-                    ESP_LOGI(TAG, "parse string error");
+                    res = ESP_OK;
                 }
-                
-            }else{
+                else
+                {
+                    ESP_LOGI(TAG, "parse string error");
+                    res = ESP_FAIL;
+                }
+            }
+            else
+            {
                 ESP_LOGI(TAG, "root error");
+                res = ESP_FAIL;
             }
 
             cJSON_Delete(root);
+            //xEventGroupSetBits(http_api_evengroup, UPDATE_TOKEN_OK_BIT); //设置标志，回应应用程序
         }
+        ESP_LOGI(TAG, "send to res_queue :%d", res);
+        xQueueSend(res_queue, &res, portMAX_DELAY); //返回结果
     }
-    
+
     vTaskDelete(NULL);
 }
-
 
 /*
  * http任务初始化
@@ -302,9 +321,9 @@ void http_api_task(void *arg)
 void httptask_init()
 {
     esp_log_level_set(TAG, ESP_LOG_INFO);
-    http_api_evengroup = xEventGroupCreate();   //创建api事件组，用于各种api请求的同步
-    xTaskCreate(http_api_task, "http_api_task", 2048 * 2, NULL, 5, NULL);   //创建http请求任务
-    global_clk_init();  //全局时间初始化
 
-    update_access_token();  //获取baidutoken
+    res_queue = xQueueCreate(1, sizeof(int));
+    http_api_evengroup = xEventGroupCreate();                             //创建api事件组，用于各种api请求的同步
+    xTaskCreate(http_api_task, "http_api_task", 2048 * 2, NULL, 5, NULL); //创建http请求任务
+
 }

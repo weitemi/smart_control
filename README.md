@@ -1,3 +1,11 @@
+<!--
+ * @Author: your name
+ * @Date: 2021-03-06 09:55:31
+ * @LastEditTime: 2021-03-24 19:43:25
+ * @LastEditors: Please set LastEditors
+ * @Description: In User Settings Edit
+ * @FilePath: \esp-adf\examples\myapp\off_asr\README.md
+-->
 
 
 # 智能控制
@@ -17,9 +25,58 @@
 #### 语音唤醒及识别
 嗨乐鑫，唤醒，蓝灯亮起，说出命令词
 > 空调控制：打开空调，设置空调27度，关闭空调
+
 > 互联网数据：今天/明天/后天 天气怎么样
+
 > 定时任务设置：5秒后打开空调 ，十秒后关闭空调
+
 > 其他：现在几点，室内温度，红外学习
+
+###### 命令词表
+
+CONFIG_CN_SPEECH_COMMAND_ID0="she zhi kong tiao er shi du"
+CONFIG_CN_SPEECH_COMMAND_ID1="she zhi kong tiao er shi yi du"
+CONFIG_CN_SPEECH_COMMAND_ID2="she zhi kong tiao er shi er du"
+CONFIG_CN_SPEECH_COMMAND_ID3="she zhi kong tiao er shi san du"
+CONFIG_CN_SPEECH_COMMAND_ID4="she zhi kong tiao er shi si du"
+CONFIG_CN_SPEECH_COMMAND_ID5="she zhi kong tiao er shi wu du"
+CONFIG_CN_SPEECH_COMMAND_ID6="she zhi kong tiao er shi liu du"
+CONFIG_CN_SPEECH_COMMAND_ID7="she zhi kong tiao er shi qi du"
+CONFIG_CN_SPEECH_COMMAND_ID8="she zhi kong tiao er shi ba du"
+CONFIG_CN_SPEECH_COMMAND_ID9="qi dong kong tiao sao feng"
+CONFIG_CN_SPEECH_COMMAND_ID10="ting zhi kong tiao sao feng"
+CONFIG_CN_SPEECH_COMMAND_ID11="she zhi kong tiao zi dong feng su"
+CONFIG_CN_SPEECH_COMMAND_ID12="she zhi kong tiao yi ji feng su"
+CONFIG_CN_SPEECH_COMMAND_ID13="she zhi kong tiao er ji feng su"
+CONFIG_CN_SPEECH_COMMAND_ID14="she zhi kong tiao san ji feng su"
+CONFIG_CN_SPEECH_COMMAND_ID15="yi xiao shi hou guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID16="liang xiao shi hou guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID17="san xiao shi hou guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID18="si xiao shi hou guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID19="wu xiao shi hou guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID20="liu xiao shi hou guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID21="qi xiao shi hou guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID22="ba xiao shi hou guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID23="jiu xiao shi hou guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID24="shi xiao shi hou guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID25="da kai kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID26="guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID27=""
+CONFIG_CN_SPEECH_COMMAND_ID28=""
+CONFIG_CN_SPEECH_COMMAND_ID29=""
+CONFIG_CN_SPEECH_COMMAND_ID30="da kai lan ya"
+CONFIG_CN_SPEECH_COMMAND_ID31="guan bi lan ya"
+CONFIG_CN_SPEECH_COMMAND_ID32="ming tian tian qi zen me yang"
+CONFIG_CN_SPEECH_COMMAND_ID33="jin tian tian qi zen me yang"
+CONFIG_CN_SPEECH_COMMAND_ID34="hou tian tian qi zen me yang"
+CONFIG_CN_SPEECH_COMMAND_ID35="shi nei wen du"
+CONFIG_CN_SPEECH_COMMAND_ID36="xian zai ji dian"
+CONFIG_CN_SPEECH_COMMAND_ID37="hong wai xue xi"
+CONFIG_CN_SPEECH_COMMAND_ID38=""
+CONFIG_CN_SPEECH_COMMAND_ID39=""
+CONFIG_CN_SPEECH_COMMAND_ID40="shi miao hou guan bi kong tiao"
+CONFIG_CN_SPEECH_COMMAND_ID41="jiu miao hou da kai kong tiao"
+
 
 #### 红外学习
 
@@ -48,6 +105,9 @@
 
 wifi csi及蓝牙 语音识别精度不够
 
-红外的任务能否改进，或者取消任务（用全局变量存放二进制文件？）
+
+
+
+
 
 

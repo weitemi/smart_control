@@ -162,7 +162,7 @@ int speech_sync(char* t)
     //检查wifi连接
     if(!get_wifi_status())
     {
-        ESP_LOGI(TAG, "wifi error");
+        ESP_LOGI(TAG, "wifi disconnect,can't tts");
         return ESP_FAIL;
     }
     //ESP_LOGI(TAG, "start speech sync t = %s",t);
