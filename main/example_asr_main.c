@@ -49,6 +49,7 @@
 #include "myuart.h"
 
 #include "lwip/sockets.h"
+#include "myble.h"
 
 static const char *TAG = "main.c";
 
@@ -159,9 +160,9 @@ void app_main()
 
     httptask_init();
 
+    ble_start();
     wifi_init_sta();
-    
-    
+
     xTaskCreate(clock_task, "clock_Task", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, NULL);
 
 #if USE_HEAP_MANGER

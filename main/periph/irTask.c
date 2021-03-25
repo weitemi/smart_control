@@ -27,6 +27,9 @@ TaskHandle_t ir_tx_handle;
 //限制对红外的操作，不能同时出现收发
 static SemaphoreHandle_t IR_sem;
 
+struct RX_signal rx_sig = {0};
+
+
 //红外码库二进制文件的路径
 const char *ir_code_lib[] = {
     //格力码库
@@ -80,17 +83,16 @@ const char *ir_code_lib[] = {
 /*
  * 设置空调编码，并保存到nvs
  */
-uint8_t ac_set_code_lib(uint8_t band,uint8_t pro_code)
+uint8_t ac_set_code_lib(uint8_t band, uint8_t pro_code)
 {
     ac_handle.code = band * 4 + pro_code;
     return nvs_save_ac_code(ac_handle.code, AC_DEFAULT);
-
 }
 
 /*
  * 根据ac_handle发射红外线
  */
-inline void ac_control()
+void ac_control()
 {
 
     xSemaphoreTake(IR_sem, portMAX_DELAY);
@@ -165,7 +167,7 @@ int ac_set_swing(bool open)
 /*
  * @brief 填充item的电平和电平时间 需要将时间转换成计数器的计数值 /10*RMT_TICK_10_US
  */
-static inline void nec_fill_item_level(rmt_item32_t *item, int high_us, int low_us)
+static void nec_fill_item_level(rmt_item32_t *item, int high_us, int low_us)
 {
     item->level0 = 1;
     item->duration0 = (high_us) / 10 * RMT_TICK_10_US;
@@ -194,7 +196,7 @@ static void irext_build(rmt_item32_t *item, size_t item_num)
  * @brief Check whether duration is around target_us
  * 检查item里时间是否是目标时间
  */
-inline bool check_in_duration(int duration_ticks, uint32_t target_us, int margin_us)
+bool check_in_duration(int duration_ticks, uint32_t target_us, int margin_us)
 {
     //ESP_LOGI(TAG, "duration_ticks = %d,target_us=%d,margin_us=%d" ,NEC_ITEM_DURATION(duration_ticks), target_us, margin_us);
     if ((NEC_ITEM_DURATION(duration_ticks) < (target_us + margin_us)) && (NEC_ITEM_DURATION(duration_ticks) > (target_us - margin_us)))
@@ -211,10 +213,10 @@ inline bool check_in_duration(int duration_ticks, uint32_t target_us, int margin
  * item：要检查的item
  * sig：输入信号结构体
  */
-static bool check_bit_one(rmt_item32_t *item, struct RX_signal *sig)
+static bool check_bit_one(rmt_item32_t *item)
 {
     //ESP_LOGI(TAG, "sig_low=%u,sig->highlevel_1=%u" ,sig->lowlevel,sig->highlevel_1);
-    if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL) && check_in_duration(item->duration0, sig->lowlevel, NEC_BIT_MARGIN) && check_in_duration(item->duration1, sig->highlevel_1, NEC_BIT_MARGIN))
+    if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL) && check_in_duration(item->duration0, rx_sig.lowlevel, NEC_BIT_MARGIN) && check_in_duration(item->duration1, rx_sig.highlevel_1, NEC_BIT_MARGIN))
     {
         return true;
     }
@@ -226,10 +228,10 @@ static bool check_bit_one(rmt_item32_t *item, struct RX_signal *sig)
  * item：要检查的item
  * sig：输入信号结构体
  */
-static bool check_bit_zero(rmt_item32_t *item, struct RX_signal *sig)
+static bool check_bit_zero(rmt_item32_t *item)
 {
 
-    if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL) && check_in_duration(item->duration0, sig->lowlevel, NEC_BIT_MARGIN) && check_in_duration(item->duration1, sig->highlevel_0, NEC_BIT_MARGIN))
+    if ((item->level0 == RMT_RX_ACTIVE_LEVEL && item->level1 != RMT_RX_ACTIVE_LEVEL) && check_in_duration(item->duration0, rx_sig.lowlevel, NEC_BIT_MARGIN) && check_in_duration(item->duration1, rx_sig.highlevel_0, NEC_BIT_MARGIN))
     {
         return true;
     }
@@ -292,7 +294,7 @@ static bool check_header(rmt_item32_t *item)
  * item_num：item数量，一个item32bits
  * sig：解析的结果存放在sig中
  */
-static int parse_items(rmt_item32_t *item, int item_num, struct RX_signal *sig)
+static int parse_items(rmt_item32_t *item)
 {
     int i;
     uint64_t encode = 0;
@@ -314,36 +316,36 @@ static int parse_items(rmt_item32_t *item, int item_num, struct RX_signal *sig)
 
     if (item->level0 == RMT_RX_ACTIVE_LEVEL)
     {
-        sig->lowlevel = NEC_ITEM_DURATION(item->duration0);
+        rx_sig.lowlevel = NEC_ITEM_DURATION(item->duration0);
         //ESP_LOGI(TAG, "lowlevel = %u",sig->lowlevel);
     }
     rmt_item32_t *t_item = item;
     //遍历item，确定highlevel_1和highlevel_0
-    for (; sig->highlevel_0 == 0 || sig->highlevel_1 == 0; t_item++)
+    for (; rx_sig.highlevel_0 == 0 || rx_sig.highlevel_1 == 0; t_item++)
     {
         uint32_t duration = NEC_ITEM_DURATION(t_item->duration1);
 
         if (duration > 1500)
         {
-            sig->highlevel_1 = duration;
+            rx_sig.highlevel_1 = duration;
         }
         else
         {
-            sig->highlevel_0 = duration;
+            rx_sig.highlevel_0 = duration;
         }
     }
-    ESP_LOGI(TAG, "sig: lowlevel = %u highlevel_1 = %u  highlevel_0 = %u", sig->lowlevel, sig->highlevel_1, sig->highlevel_0);
+    ESP_LOGI(TAG, "sig: lowlevel = %u highlevel_1 = %u  highlevel_0 = %u", rx_sig.lowlevel, rx_sig.highlevel_1, rx_sig.highlevel_0);
     //解析编码数据 目前只检查前28位数据
     //检查数据位
     for (i = 0; i < 28; i++)
     {
         //ESP_LOGI(TAG, "item->duration0 = %u,item->duration1 = %u", NEC_ITEM_DURATION(item->duration0), NEC_ITEM_DURATION(item->duration1));
 
-        if (check_bit_one(item, sig))
+        if (check_bit_one(item))
         {
             encode |= (1 << i);
         }
-        else if (check_bit_zero(item, sig))
+        else if (check_bit_zero(item))
         {
 
             encode |= (0 << i);
@@ -355,8 +357,8 @@ static int parse_items(rmt_item32_t *item, int item_num, struct RX_signal *sig)
         }
         item++;
     }
-    sig->encode = encode;
-    ESP_LOGI(TAG, "encode = %x", sig->encode);
+    rx_sig.encode = encode;
+    ESP_LOGI(TAG, "encode = %x",rx_sig.encode);
     return 0;
 }
 /*----------------------------------------------------硬件初始化-------------------------------------------------*/
@@ -424,17 +426,17 @@ void ir_study()
 /*
  * 根据信号，判断属于哪个编码库，并更新ac_handle
  */
-static int ir_code_lib_update(struct RX_signal *sig)
+static int ir_code_lib_update()
 {
     switch (band)
     {
     case band_gree:
-        if (sig->item_num == 70 && sig->encode == GREE_CODE_2)
+        if (rx_sig.item_num == 70 && rx_sig.encode == GREE_CODE_2)
         {
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_gree * 5 + code_2]);
             pro_code = code_2;
         }
-        else if (sig->item_num == 36 && sig->encode == GREE_CODE_4)
+        else if (rx_sig.item_num == 36 && rx_sig.encode == GREE_CODE_4)
         {
             //todo 36?
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_gree * 5 + code_4]);
@@ -446,14 +448,15 @@ static int ir_code_lib_update(struct RX_signal *sig)
         }
         break;
     case band_meidi:
-        if (sig->lowlevel < 5000)
+
+        if (rx_sig.lowlevel<5000)
         {
-            if (sig->encode == MEIDI_CODE_1)
+            if (rx_sig.encode == MEIDI_CODE_1)
             {
                 ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_1]);
                 pro_code = code_1;
             }
-            else if (sig->encode == MEIDI_CODE_2)
+            else if (rx_sig.encode == MEIDI_CODE_2)
             {
                 ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_2]);
                 pro_code = code_2;
@@ -465,12 +468,12 @@ static int ir_code_lib_update(struct RX_signal *sig)
         }
         else
         {
-            if (sig->encode == MEIDI_CODE_4)
+            if (rx_sig.encode == MEIDI_CODE_4)
             {
                 ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_4]);
                 pro_code = code_4;
             }
-            else if (sig->encode == MEIDI_CODE_5)
+            else if (rx_sig.encode == MEIDI_CODE_5)
             {
                 ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_5]);
                 pro_code = code_5;
@@ -482,22 +485,22 @@ static int ir_code_lib_update(struct RX_signal *sig)
         }
         break;
     case band_haier:
-        if (sig->encode == HAIER_CODE_1)
+        if (rx_sig.encode == HAIER_CODE_1)
         {
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_haier * 5 + code_1]);
             pro_code = code_1;
         }
-        else if (sig->encode == HAIER_CODE_2)
+        else if (rx_sig.encode == HAIER_CODE_2)
         {
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_2]);
             pro_code = code_2;
         }
-        else if (sig->encode == HAIER_CODE_3)
+        else if (rx_sig.encode == HAIER_CODE_3)
         {
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_3]);
             pro_code = code_3;
         }
-        else if (sig->encode == HAIER_CODE_5)
+        else if (rx_sig.encode == HAIER_CODE_5)
         {
             ESP_LOGI(TAG, "update ir_code_lib:%s", ir_code_lib[band_meidi * 5 + code_5]);
             pro_code = code_5;
@@ -510,9 +513,9 @@ static int ir_code_lib_update(struct RX_signal *sig)
     default:
         return -1;
     }
-    
-    ac_set_code_lib(band,pro_code);
-    
+
+    ac_set_code_lib(band, pro_code);
+
     return 0;
 }
 /*---------------------------------------接收发送任务函数----------------------------------------------------*/
@@ -540,17 +543,13 @@ void rmt_ir_rxTask(void *agr)
             //!红外线接收器有干扰，需要滤波
             if (rx_size > 30)
             {
-                struct RX_signal sig;   //接收信号结构体
-                size_t item_num = rx_size / 4;  //一个item32bit
-                sig.item_num = item_num;
-                sig.highlevel_1 = 0;
-                sig.highlevel_0 = 0;
-                sig.encode = 0;
+              
+                rx_sig.item_num = rx_size / 4; //一个item32bit
 
                 //解析item
-                parse_items(item, item_num, &sig);
+                parse_items(item);
 
-                ir_code_lib_update(&sig); //更新ac_handle
+                ir_code_lib_update(); //更新ac_handle
                 rmt_rx_stop(rx_channel);  //暂停接收
                 xSemaphoreGive(IR_sem);   //释放信号量
             }
@@ -629,10 +628,10 @@ int IR_init()
     ac_handle.status.ac_wind_dir = AC_SWING_ON; //开启扫风
     ac_handle.status.ac_wind_speed = AC_WS_LOW;
 
-    uint8_t *temp;  //缓存码库编号
+    uint8_t *temp; //缓存码库编号
     //从nvs读取码库编号
     temp = nvs_get_ac_lib(AC_DEFAULT);
-    
+
     //第一次使用，nvs中无保存码库编号
     if (temp == NULL)
     {
@@ -640,7 +639,7 @@ int IR_init()
         //没有编号，使用默认编号
         band = band_gree;
         pro_code = code_3;
-        
+
         if (ac_set_code_lib(band, pro_code) != ESP_OK) //保存到nvs
         {
             ESP_LOGI(TAG, "save ac code from nvs fail");

@@ -1,7 +1,7 @@
 <!--
  * @Author: your name
  * @Date: 2021-03-06 09:55:31
- * @LastEditTime: 2021-03-24 19:43:25
+ * @LastEditTime: 2021-03-25 10:18:23
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\README.md
@@ -81,6 +81,16 @@ CONFIG_CN_SPEECH_COMMAND_ID41="jiu miao hou da kai kong tiao"
 #### 红外学习
 
 通过按键或语音命令进入红外接收，使用遥控器发射“打开 制冷模式 26° 自动扫风 一级风速”即可学习对应协议，目前仅支持格力美的海尔
+
+#### 蓝牙配网
+
+打开微信，搜索小程序BLETool,打开蓝牙，连接到ESP32A1S，然后在characteristics分别写入：
+
+> 6601 :写入你的路由名称
+> 6602:路由密码
+> 6603:发送666确认连接
+
+完成以上操作后。设备会自动连接到路由器，复位后会尝试连接上次连接的路由器
 
 ## 二 目录介绍
 
