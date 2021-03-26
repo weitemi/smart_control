@@ -53,7 +53,7 @@
 
 static const char *TAG = "main.c";
 
-#define USE_HEAP_MANGER 1
+#define USE_HEAP_MANGER 0
 /*----任务配置----*/
 #define ASR_TASK_PRO 6
 #define BUTTON_TASK_PRO 4
@@ -69,8 +69,6 @@ static const char *TAG = "main.c";
 #define HTTP_GET_WEATHER_TASK_SIZE 4096
 #define HEAP_MANAGER_TASK_SIZE 2048
 
-#define HOST_IP_ADDR "192.168.3.1"
-#define PORT "82"
 
 typedef enum
 {
@@ -155,12 +153,11 @@ void app_main()
 
     xTaskCreate(rmt_ir_rxTask, "ir_rx", IR_RX_TASK_SIZE, NULL, IR_RX_TASK_PRO, NULL);
 
-
     ds18b20_get_data(); //首次上电需要读取一次
 
     httptask_init();
 
-    ble_start();
+    ble_init();
     wifi_init_sta();
 
     xTaskCreate(clock_task, "clock_Task", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, NULL);
@@ -170,31 +167,31 @@ void app_main()
 #endif
 
     ESP_LOGI(TAG, "Initialize SR wn handle");
-    esp_wn_iface_t *wakenet;    //唤醒模型
-    model_coeff_getter_t *model_coeff_getter;   //神经网络系数获取
-    model_iface_data_t *model_wn_data;  //识别模型的数据
-    const esp_mn_iface_t *multinet = &MULTINET_MODEL;   //识别模型
+    esp_wn_iface_t *wakenet;                          //唤醒模型
+    model_coeff_getter_t *model_coeff_getter;         //神经网络系数获取
+    model_iface_data_t *model_wn_data;                //识别模型的数据
+    const esp_mn_iface_t *multinet = &MULTINET_MODEL; //识别模型
 
     // Initialize wakeNet model data
-    get_wakenet_iface(&wakenet);    //初始化唤醒模型
-    get_wakenet_coeff(&model_coeff_getter); //获取系数
-    model_wn_data = wakenet->create(model_coeff_getter, DET_MODE_90);   //创建唤醒模型，设置灵敏度90%
+    get_wakenet_iface(&wakenet);                                      //初始化唤醒模型
+    get_wakenet_coeff(&model_coeff_getter);                           //获取系数
+    model_wn_data = wakenet->create(model_coeff_getter, DET_MODE_90); //创建唤醒模型，设置灵敏度90%
 
-    int wn_num = wakenet->get_word_num(model_wn_data);  //唤醒词数量
+    int wn_num = wakenet->get_word_num(model_wn_data); //唤醒词数量
     for (int i = 1; i <= wn_num; i++)
     {
-        char *name = wakenet->get_word_name(model_wn_data, i);  //唤醒词文本
+        char *name = wakenet->get_word_name(model_wn_data, i); //唤醒词文本
         ESP_LOGI(TAG, "keywords: %s (index = %d)", name, i);
     }
-    float wn_threshold = wakenet->get_det_threshold(model_wn_data, 1);  //获取唤醒阈值
-    int wn_sample_rate = wakenet->get_samp_rate(model_wn_data); //唤醒词采样率16k
-    int audio_wn_chunksize = wakenet->get_samp_chunksize(model_wn_data);    //内存块大小
+    float wn_threshold = wakenet->get_det_threshold(model_wn_data, 1);   //获取唤醒阈值
+    int wn_sample_rate = wakenet->get_samp_rate(model_wn_data);          //唤醒词采样率16k
+    int audio_wn_chunksize = wakenet->get_samp_chunksize(model_wn_data); //内存块大小
     ESP_LOGI(TAG, "keywords_num = %d, threshold = %f, sample_rate = %d, chunksize = %d, sizeof_uint16 = %d", wn_num, wn_threshold, wn_sample_rate, audio_wn_chunksize, sizeof(int16_t));
 
     model_iface_data_t *model_mn_data = multinet->create(&MULTINET_COEFF, 4000); //语音识别时间，single模式下最大5s
-    int audio_mn_chunksize = multinet->get_samp_chunksize(model_mn_data);   //识别内存块
-    int mn_num = multinet->get_samp_chunknum(model_mn_data);    //唤醒词数量
-    int mn_sample_rate = multinet->get_samp_rate(model_mn_data);    //采样率16k
+    int audio_mn_chunksize = multinet->get_samp_chunksize(model_mn_data);        //识别内存块
+    int mn_num = multinet->get_samp_chunknum(model_mn_data);                     //唤醒词数量
+    int mn_sample_rate = multinet->get_samp_rate(model_mn_data);                 //采样率16k
     ESP_LOGI(TAG, "keywords_num = %d , sample_rate = %d, chunksize = %d, sizeof_uint16 = %d", mn_num, mn_sample_rate, audio_mn_chunksize, sizeof(int16_t));
 
     //选择所需的较大的内存块
@@ -203,13 +200,13 @@ void app_main()
     {
         size = audio_mn_chunksize;
     }
-    int16_t *buffer = (int16_t *)malloc(size * sizeof(short));  //buffer用于缓存经过流水线处理的音频
+    int16_t *buffer = (int16_t *)malloc(size * sizeof(short)); //buffer用于缓存经过流水线处理的音频
 
     /*[ac101]-->i2s_stream-->filter-->raw-->[SR]*/
-    audio_pipeline_handle_t pipeline;   //音频输入流水线
+    audio_pipeline_handle_t pipeline;                           //音频输入流水线
     audio_element_handle_t i2s_stream_reader, filter, raw_read; //流水线车间
 
-    bool enable_wn = true;  //唤醒使能
+    bool enable_wn = true; //唤醒使能
     uint32_t mn_count = 0;
 
     ESP_LOGI(TAG, "[ 1 ] Start codec chip");
@@ -240,7 +237,7 @@ void app_main()
     ESP_LOGI(TAG, "[ 2.3 ] Create raw to receive data");
     raw_stream_cfg_t raw_cfg = {
         .out_rb_size = 8 * 1024,
-        .type = AUDIO_STREAM_READER,    //输入流
+        .type = AUDIO_STREAM_READER, //输入流
     };
     raw_read = raw_stream_init(&raw_cfg);
 
@@ -330,7 +327,6 @@ static int id = 0;
 timer_cb ir_close_cb(struct timer *tmr, void *arg)
 {
 
-
     if (id == 0)
     {
         ac_open(false);
@@ -345,14 +341,12 @@ timer_cb ir_close_cb(struct timer *tmr, void *arg)
     return NULL;
 }
 
-
-
 /*
  * 语音识别处理函数
  */
 static esp_err_t asr_multinet_control(int commit_id)
 {
-    
+
     if (commit_id >= 0 && commit_id < ID_MAX)
     {
         switch (commit_id)
@@ -361,103 +355,106 @@ static esp_err_t asr_multinet_control(int commit_id)
             ac_set_temp(20);
 
             ESP_LOGI(TAG, "ID0_SHEZHIKONGTIAOERSHIDU");
-            AC_SUCCESS_MP3;
+            ////AC_SUCCESS_MP3;
             break;
 
         case ID1_SHEZHIKONGTIAOERSHIYIDU:
             ac_set_temp(21);
 
             ESP_LOGI(TAG, "ID1_SHEZHIKONGTIAOERSHIYIDU");
-            AC_SUCCESS_MP3;
+            ////AC_SUCCESS_MP3;
             break;
 
         case ID2_SHEZHIKONGTIAOERSHIERDU:
             ac_set_temp(22);
 
             ESP_LOGI(TAG, "ID2_SHEZHIKONGTIAOERSHIERDU");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID3_SHEZHIKONGTIAOERSHISANDU:
             ac_set_temp(23);
 
             ESP_LOGI(TAG, "ID3_SHEZHIKONGTIAOERSHISANDU");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID4_SHEZHIKONGTIAOERSHISIDU:
             ac_set_temp(24);
 
             ESP_LOGI(TAG, "ID4_SHEZHIKONGTIAOERSHISIDU");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID5_SHEZHIKONGTIAOERSHIWUDU:
             ac_set_temp(25);
 
             ESP_LOGI(TAG, "ID5_SHEZHIKONGTIAOERSHIWUDU");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID6_SHEZHIKONGTIAOERSHLIUIDU:
             ac_set_temp(26);
             ESP_LOGI(TAG, "ID6_SHEZHIKONGTIAOERSHLIUIDU");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID7_SHEZHIKONGTIAOERSHIQIDU:
             ac_set_temp(27);
 
             ESP_LOGI(TAG, "ID7_SHEZHIKONGTIAOERSHIQIDU");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID8_SHEZHIKONGTIAOERSHIBADU:
             ac_set_temp(28);
 
             ESP_LOGI(TAG, "ID8_SHEZHIKONGTIAOERSHIBADU");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID9_QIDONGKONGTIAOSAOFENG:
             ac_set_swing(true);
             ESP_LOGI(TAG, "ID9_QIDONGKONGTIAOSAOFENG");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
         case ID10_TINGZHIKONGTIAOSAOFENG:
             ac_set_swing(false);
             ESP_LOGI(TAG, "ID10_TINGZHIKONGTIAOSAOFENG");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
         case ID11_SHEZHIKONGTIAOZIDONGFENGSU:
             ac_set_wind_speed(0);
 
             ESP_LOGI(TAG, "ID11_SHEZHIKONGTIAOZIDONGFENGSU");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID12_SHEZHIKONGTIAOYIJIFENGSU:
             ac_set_wind_speed(1);
             ESP_LOGI(TAG, "ID12_SHEZHIKONGTIAOYIJIFENGSU");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID13_SHEZHIKONGTIAOERJIFENGSU:
             ac_set_wind_speed(2);
             ESP_LOGI(TAG, "ID13_SHEZHIKONGTIAOERJIFENGSU");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID14_SHEZHIKONGTIAOSANJIFENGSU:
             ac_set_wind_speed(3);
 
             ESP_LOGI(TAG, "ID14_SHEZHIKONGTIAOSANJIFENGSU");
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID15_YIXIAOSHIHOUGUANBIKONGTIAO:
             clk.value = global_clk.value;
-            clk.cal.hour += 1;
+            //clk.cal.hour += 1;
+            clk.cal.second += 5;
+            id = 0;
+            tmr_new(&clk, ir_close_cb, &id, "1h");
             goto timer;
 
             ESP_LOGI(TAG, "ID15_YIXIAOSHIHOUGUANBIKONGTIAO");
@@ -530,12 +527,12 @@ static esp_err_t asr_multinet_control(int commit_id)
         case ID25_DAKAIKONGTIAO:
             ESP_LOGI(TAG, "ID25_DAKAIKONGTIAO");
             ac_open(true);
-            AC_SUCCESS_MP3;
+            //AC_SUCCESS_MP3;
             break;
 
         case ID26_GUANBIKONGTIAO:
             ac_open(false);
-            AC_CLOSE_MP3;
+            //AC_CLOSE_MP3;
             ESP_LOGI(TAG, "ID26_GUANBIKONGTIAO");
             break;
 
@@ -543,11 +540,13 @@ static esp_err_t asr_multinet_control(int commit_id)
         case ID30_DAKAILANYA:
 
             ESP_LOGI(TAG, "ID30_DAKAILANYA");
+            ble_open();
             break;
 
         case ID31_GUANBILANYA:
 
             ESP_LOGI(TAG, "ID31_GUANBILANYA");
+            ble_close();
             break;
 
         case ID32_MINGTIANTIANQIZENMEYANG:
@@ -592,7 +591,7 @@ static esp_err_t asr_multinet_control(int commit_id)
             clk.cal.second += 10;
             id = 0;
             tmr_new(&clk, ir_close_cb, &id, "10s");
-            SETTMR_MP3;
+            //SETTMR_MP3;
 
             break;
         case ID41_JIUMIAOHOUDAKAIKONGTIAO:
@@ -601,7 +600,7 @@ static esp_err_t asr_multinet_control(int commit_id)
             clk.cal.second += 9;
             id = 1;
             tmr_new(&clk, ir_close_cb, &id, "5s");
-            SETTMR_MP3;
+            //SETTMR_MP3;
 
             break;
 
@@ -616,7 +615,7 @@ static esp_err_t asr_multinet_control(int commit_id)
 
 timer:
     tmr_new(&clk, ir_close_cb, NULL, "ir_close");
-    SETTMR_MP3;
+    //SETTMR_MP3;
     return ESP_OK;
 }
 

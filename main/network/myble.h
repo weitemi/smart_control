@@ -1,8 +1,8 @@
 /*
  * @Author: your name
  * @Date: 2021-03-24 23:48:44
- * @LastEditTime: 2021-03-24 23:50:00
- * @LastEditors: your name
+ * @LastEditTime: 2021-03-26 09:15:19
+ * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\network\myble.h
  */
@@ -55,8 +55,9 @@ enum
 //extern void modify_wificonfig_ssid(const char* pswd);
 //extern void modify_wificonfig_pswd(const char* pswd);
 
-void ble_start(void);
-
+void ble_init(void);
+int ble_close();
+int ble_open();
 //用一个uuid对应的值来表示wifi的连接状态，下面的函数是给这个对应的值写入新的值
 void set_wifi_status(uint8_t sta);
 #endif  // _MY_BLE_H

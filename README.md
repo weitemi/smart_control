@@ -1,7 +1,7 @@
 <!--
  * @Author: your name
  * @Date: 2021-03-06 09:55:31
- * @LastEditTime: 2021-03-25 10:18:23
+ * @LastEditTime: 2021-03-26 09:26:58
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\README.md
@@ -113,7 +113,7 @@ CONFIG_CN_SPEECH_COMMAND_ID41="jiu miao hou da kai kong tiao"
 
 ## 目前的问题
 
-wifi csi及蓝牙 语音识别精度不够
+语音识别精度不够
 
 
 

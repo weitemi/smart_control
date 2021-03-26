@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-10-25 15:01:11
- * @LastEditTime: 2021-03-24 19:40:40
+ * @LastEditTime: 2021-03-26 09:17:40
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\periph\buttonTask.c
@@ -17,6 +17,7 @@
 #include "mynvs.h"
 #include "driver/gpio.h"
 #include "myhttp.h"
+#include "myble.h"
 
 
 static const char *TAG = "buttonTask";
@@ -61,11 +62,12 @@ void button_task(void *arg)
             {
                 
                 //ESP_LOGI(TAG, "k2 :send message:");
-                ir_study();     //红外学习
+                //ir_study();     //红外学习
+                ble_close();
             }
             else if ((int)msg.data == KEY1)
             {
-
+                ble_open();
             }
         }
     }
