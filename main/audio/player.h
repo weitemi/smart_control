@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-10-22 10:00:03
- * @LastEditTime: 2021-03-07 11:45:09
+ * @LastEditTime: 2021-03-30 16:37:52
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\audio\player.h
@@ -37,7 +37,10 @@
 #define SETTMR_MP3 (play_flash(TONE_TYPE_SET_TIMER))
 #define AC_CLOSE_MP3 (play_flash(TONE_TYPE_AIR_CLOSE))
 #define AC_SUCCESS_MP3 (play_flash(TONE_TYPE_AIR_SET_OK))
-
+#define BLEOPEN_MP3 (play_flash(TONE_TYPE_BLE_OPEN))
+#define BLECLOSE_MP3 (play_flash(TONE_TYPE_BLE_CLOSE))
+#define WHAT_MP3 (play_flash(TONE_TYPE_WHATAREYOUTAKING))
+#define NO_MP3 (play_flash(TONE_TYPE_NO))
 
 
 

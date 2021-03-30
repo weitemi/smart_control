@@ -287,6 +287,7 @@ void app_main()
                 LED_OFF;
                 enable_wn = true;
                 mn_count = 0;
+                WHAT_MP3;
             }
         }
     }
@@ -355,98 +356,98 @@ static esp_err_t asr_multinet_control(int commit_id)
             ac_set_temp(20);
 
             ESP_LOGI(TAG, "ID0_SHEZHIKONGTIAOERSHIDU");
-            ////AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID1_SHEZHIKONGTIAOERSHIYIDU:
             ac_set_temp(21);
 
             ESP_LOGI(TAG, "ID1_SHEZHIKONGTIAOERSHIYIDU");
-            ////AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID2_SHEZHIKONGTIAOERSHIERDU:
             ac_set_temp(22);
 
             ESP_LOGI(TAG, "ID2_SHEZHIKONGTIAOERSHIERDU");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID3_SHEZHIKONGTIAOERSHISANDU:
             ac_set_temp(23);
 
             ESP_LOGI(TAG, "ID3_SHEZHIKONGTIAOERSHISANDU");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID4_SHEZHIKONGTIAOERSHISIDU:
             ac_set_temp(24);
 
             ESP_LOGI(TAG, "ID4_SHEZHIKONGTIAOERSHISIDU");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID5_SHEZHIKONGTIAOERSHIWUDU:
             ac_set_temp(25);
 
             ESP_LOGI(TAG, "ID5_SHEZHIKONGTIAOERSHIWUDU");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID6_SHEZHIKONGTIAOERSHLIUIDU:
             ac_set_temp(26);
             ESP_LOGI(TAG, "ID6_SHEZHIKONGTIAOERSHLIUIDU");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID7_SHEZHIKONGTIAOERSHIQIDU:
             ac_set_temp(27);
 
             ESP_LOGI(TAG, "ID7_SHEZHIKONGTIAOERSHIQIDU");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID8_SHEZHIKONGTIAOERSHIBADU:
             ac_set_temp(28);
 
             ESP_LOGI(TAG, "ID8_SHEZHIKONGTIAOERSHIBADU");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID9_QIDONGKONGTIAOSAOFENG:
             ac_set_swing(true);
             ESP_LOGI(TAG, "ID9_QIDONGKONGTIAOSAOFENG");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
         case ID10_TINGZHIKONGTIAOSAOFENG:
             ac_set_swing(false);
             ESP_LOGI(TAG, "ID10_TINGZHIKONGTIAOSAOFENG");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
         case ID11_SHEZHIKONGTIAOZIDONGFENGSU:
             ac_set_wind_speed(0);
 
             ESP_LOGI(TAG, "ID11_SHEZHIKONGTIAOZIDONGFENGSU");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID12_SHEZHIKONGTIAOYIJIFENGSU:
             ac_set_wind_speed(1);
             ESP_LOGI(TAG, "ID12_SHEZHIKONGTIAOYIJIFENGSU");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID13_SHEZHIKONGTIAOERJIFENGSU:
             ac_set_wind_speed(2);
             ESP_LOGI(TAG, "ID13_SHEZHIKONGTIAOERJIFENGSU");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID14_SHEZHIKONGTIAOSANJIFENGSU:
             ac_set_wind_speed(3);
 
             ESP_LOGI(TAG, "ID14_SHEZHIKONGTIAOSANJIFENGSU");
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID15_YIXIAOSHIHOUGUANBIKONGTIAO:
@@ -527,26 +528,28 @@ static esp_err_t asr_multinet_control(int commit_id)
         case ID25_DAKAIKONGTIAO:
             ESP_LOGI(TAG, "ID25_DAKAIKONGTIAO");
             ac_open(true);
-            //AC_SUCCESS_MP3;
+            AC_SUCCESS_MP3;
             break;
 
         case ID26_GUANBIKONGTIAO:
             ac_open(false);
-            //AC_CLOSE_MP3;
+            AC_CLOSE_MP3;
             ESP_LOGI(TAG, "ID26_GUANBIKONGTIAO");
             break;
 
-            //////////////////////////////////
+           
         case ID30_DAKAILANYA:
 
             ESP_LOGI(TAG, "ID30_DAKAILANYA");
             ble_open();
+            BLEOPEN_MP3;
             break;
 
         case ID31_GUANBILANYA:
 
             ESP_LOGI(TAG, "ID31_GUANBILANYA");
             ble_close();
+            BLECLOSE_MP3;
             break;
 
         case ID32_MINGTIANTIANQIZENMEYANG:
@@ -591,7 +594,7 @@ static esp_err_t asr_multinet_control(int commit_id)
             clk.cal.second += 10;
             id = 0;
             tmr_new(&clk, ir_close_cb, &id, "10s");
-            //SETTMR_MP3;
+            SETTMR_MP3;
 
             break;
         case ID41_JIUMIAOHOUDAKAIKONGTIAO:
@@ -600,7 +603,7 @@ static esp_err_t asr_multinet_control(int commit_id)
             clk.cal.second += 9;
             id = 1;
             tmr_new(&clk, ir_close_cb, &id, "5s");
-            //SETTMR_MP3;
+            SETTMR_MP3;
 
             break;
 
@@ -615,7 +618,7 @@ static esp_err_t asr_multinet_control(int commit_id)
 
 timer:
     tmr_new(&clk, ir_close_cb, NULL, "ir_close");
-    //SETTMR_MP3;
+    SETTMR_MP3;
     return ESP_OK;
 }
 
