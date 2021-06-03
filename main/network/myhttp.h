@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-10-22 10:00:03
- * @LastEditTime: 2021-03-24 17:47:00
+ * @LastEditTime: 2021-06-03 20:19:24
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\network\myhttp.h
@@ -23,6 +23,6 @@ char *get_Weather_String(int day);
 char *get_Time_String();
 void http_api_task(void *arg);
 void http_asr(char *recoder);
-void httptask_init();
+void http_init();
 int update_access_token();
 #endif

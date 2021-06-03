@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-12-19 16:48:59
- * @LastEditTime: 2021-03-24 19:39:59
+ * @LastEditTime: 2021-06-04 00:11:32
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adfd:\MyNote\clk_t\clk_t.c
@@ -9,14 +9,87 @@
 #include "clock.h"
 #include "myhttp.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 
 static const char *TAG = "CLOCK";
 
+const int UPDATE_CLK = BIT0;
+const int NEW_TIMER = BIT1;
 
-#define SIZEOFclk_t 4
-static bool global_clk_init_flag = false;
+EventGroupHandle_t clk_event;
+
 struct timer *timer_list = NULL;
+clk_t global_clk; //全局时间
 
+/*
+ * 保存时间结构体，使其成员符合时间规则
+ * clk：要更新的时间
+ * 返回：0 年份更新；1 年份未更新
+ */
+int save_clk(clk_t *clk)
+{
+
+	if (clk->cal.second >= 60)
+	{
+		//one minute
+		clk->cal.second = clk->cal.second - 60;
+		clk->cal.minute++;
+		if (clk->cal.minute >= 60)
+		{
+			//one hour
+			clk->cal.minute = clk->cal.minute - 60;
+			clk->cal.hour++;
+			if (clk->cal.hour >= 24)
+			{
+				//date +1
+				clk->cal.hour = clk->cal.hour - 24;
+				clk->cal.date = clk->cal.date + 1;
+				switch (clk->cal.month)
+				{
+				case 1:
+				case 3:
+				case 5:
+				case 7:
+				case 8:
+				case 10:
+				case 12:
+					if (clk->cal.date == 32)
+					{
+
+						goto exit;
+					}
+					break;
+				case 2:
+					//29 or 28 in february
+					if (((clk->cal.year % 4) == 0 && clk->cal.date == 30) || ((clk->cal.year % 4 != 0) && (clk->cal.date == 29)))
+					{
+
+						goto exit;
+					}
+					break;
+				default:
+					if (clk->cal.date == 31)
+					{
+						goto exit;
+					}
+					break;
+				}
+			}
+		}
+	}
+	return 1;
+//month +1
+exit:
+	clk->cal.date = 1;
+	clk->cal.month++;
+	if (clk->cal.month == 13)
+	{
+		clk->cal.month = 1;
+		clk->cal.year++; //max to 2064
+	}
+	return 0;
+}
 /*
  * 创建一个定时器 并添加进定时队列
  * conf：定时时间
@@ -33,15 +106,15 @@ struct timer *tmr_new(clk_t *conf, timer_cb cb, void *arg, char *name)
 	//tmr must > global_clk
 	if (conf == NULL || (conf->value <= global_clk.value))
 	{
-		ESP_LOGI(TAG,"new tmr error\n");
+		ESP_LOGI(TAG, "new tmr error\n");
 		return 0;
 	}
 	tmr = (struct timer *)malloc(sizeof(struct timer));
 	//chcek the conf
 
 	clk.value = conf->value;
-	update_clk(&clk); //规范化clk
-	ESP_LOGI(TAG,"new timer %s: 20%d-%d-%d %d:%d:%d values =%u\r\n", name, clk.cal.year, clk.cal.month, clk.cal.date, clk.cal.hour, clk.cal.minute, clk.cal.second, clk.value);
+	save_clk(&clk); //规范化clk
+	ESP_LOGI(TAG, "new timer %s: 20%d-%d-%d %d:%d:%d values =%u\r\n", name, clk.cal.year, clk.cal.month, clk.cal.date, clk.cal.hour, clk.cal.minute, clk.cal.second, clk.value);
 	//printf("new timer %s: 20%d-%d-%d %d:%d:%d values =%u\r\n", name, clk.cal.year, clk.cal.month, clk.cal.date, clk.cal.hour, clk.cal.minute, clk.cal.second, clk.value);
 	tmr->timeout.value = clk.value; //将clk赋值给定时器
 
@@ -74,7 +147,7 @@ struct timer *tmr_new(clk_t *conf, timer_cb cb, void *arg, char *name)
 int tmr_add(struct timer *tmr)
 {
 	struct timer *t, *prev = NULL;
-	ESP_LOGI(TAG,"adding timer to timerlist:");
+	ESP_LOGI(TAG, "adding timer to timerlist:");
 	if (tmr == NULL)
 	{
 		ESP_LOGI(TAG, "new timer is null");
@@ -83,7 +156,7 @@ int tmr_add(struct timer *tmr)
 	//若当前无定时器则，tmr将作为第一个定时器
 	if (timer_list == NULL)
 	{
-		ESP_LOGI(TAG, "timer %s is the only timer",tmr->name);
+		ESP_LOGI(TAG, "timer %s is the only timer", tmr->name);
 		//first tmr
 		tmr->next = NULL;
 		timer_list = tmr;
@@ -101,7 +174,7 @@ int tmr_add(struct timer *tmr)
 				//若t是最后一个定时器
 				t->next = tmr; //将tmr插入t后
 				tmr->next = NULL;
-				ESP_LOGI(TAG, "add timer %s to the tail of the list ",tmr->name);
+				ESP_LOGI(TAG, "add timer %s to the tail of the list ", tmr->name);
 				return 1;
 			}
 			t = t->next; //检查下一个定时器
@@ -109,19 +182,19 @@ int tmr_add(struct timer *tmr)
 		//上一个为空，说明tmr是最早的定时器
 		if (prev == NULL)
 		{
-			
+
 			//tmr less than the first one
 			tmr->next = timer_list; //tmr插入timer_list的前面
 			timer_list = tmr;		//再更新timer_list
-			ESP_LOGI(TAG, "add timer %s to the head of list",timer_list->name);
+			ESP_LOGI(TAG, "add timer %s to the head of list", timer_list->name);
 		}
 		else
 		{
-			
+
 			tmr->next = t; //tmr插入t之前
 
 			prev->next = tmr; //tmr插入prev之后
-			ESP_LOGI(TAG, "add timer %s behind %s",tmr->name,prev->name);
+			ESP_LOGI(TAG, "add timer %s behind %s", tmr->name, prev->name);
 		}
 	}
 	return 1;
@@ -217,75 +290,8 @@ int tmr_delete(struct timer *tmr)
 
 	return 1;
 }
-/*
- * 更新时间结构体，使其成员符合时间规则
- * clk：要更新的时间
- * 返回：0 年份更新；1 年份未更新
- */
-int update_clk(clk_t *clk)
-{
 
-	if (clk->cal.second >= 60)
-	{
-		//one minute
-		clk->cal.second = clk->cal.second - 60;
-		clk->cal.minute++;
-		if (clk->cal.minute >= 60)
-		{
-			//one hour
-			clk->cal.minute = clk->cal.minute - 60;
-			clk->cal.hour++;
-			if (clk->cal.hour >= 24)
-			{
-				//date +1
-				clk->cal.hour = clk->cal.hour - 24;
-				clk->cal.date = clk->cal.date + 1;
-				switch (clk->cal.month)
-				{
-				case 1:
-				case 3:
-				case 5:
-				case 7:
-				case 8:
-				case 10:
-				case 12:
-					if (clk->cal.date == 32)
-					{
 
-						goto exit;
-					}
-					break;
-				case 2:
-					//29 or 28 in february
-					if (((clk->cal.year % 4) == 0 && clk->cal.date == 30) || ((clk->cal.year % 4 != 0) && (clk->cal.date == 29)))
-					{
-
-						goto exit;
-					}
-					break;
-				default:
-					if (clk->cal.date == 31)
-					{
-						goto exit;
-					}
-					break;
-				}
-			}
-		}
-	}
-	return 1;
-//month +1
-exit:
-	clk->cal.date = 1;
-	clk->cal.month++;
-	if (clk->cal.month == 13)
-	{
-		clk->cal.month = 1;
-		clk->cal.year++; //max to 2064
-	}
-	return 0;
-}
-clk_t global_clk; //全局时间
 /*
  * 时间任务进程 负责更新全局时间以及触发定时器
  * 在定时器中断中，每秒执行
@@ -298,7 +304,7 @@ void tmr_process(void *arg)
 	//update the global_clk
 	global_clk.cal.second++;
 
-	update_clk(&global_clk);
+	save_clk(&global_clk);
 
 	//check if timer_list is null
 	if (timer_list == NULL)
@@ -333,7 +339,7 @@ void tmr_set_global(clk_t conf)
 int get_current_nettime(clk_t *conf)
 {
 	char *origin = get_Time_String(); //调用myhttp.c,获取时间字符串："2021-03-24 04:49:53"
-	if(origin==NULL)
+	if (origin == NULL)
 	{
 		printf("get network time err\n");
 		return ESP_FAIL;
@@ -380,15 +386,14 @@ int get_current_nettime(clk_t *conf)
  */
 timer_cb update_global_cb(struct timer *tmr, void *agr)
 {
-	clk_t *t = (clk_t *)malloc(sizeof(clk_t));
+	clk_t t;
 	//无法更新时间
-	if(get_current_nettime(t)==ESP_OK)
+	while (get_current_nettime(&t) != ESP_OK)
 	{
-		tmr_set_global(*t); //更新全局时间
+		vTaskDelay(100 / portTICK_RATE_MS);
 	}
-	
-	free(t);
-	
+	tmr_set_global(t); //更新全局时间
+
 	tmr->timeout.value = global_clk.value;
 	tmr->timeout.cal.date += 1;
 
@@ -396,43 +401,69 @@ timer_cb update_global_cb(struct timer *tmr, void *agr)
 	return NULL;
 }
 
-/*
- * 时钟任务，每秒执行，处理定时任务及时间更新
- */
-void clock_task(void *arg)
+
+
+
+uint32_t get_clk()
 {
-	esp_log_level_set(TAG, ESP_LOG_INFO);
+	return global_clk.value;
+}
+void update_clk()
+{
+	xEventGroupSetBits(clk_event, UPDATE_CLK);
+}
+
+/*
+ * 时钟任务 
+ * 校准时间，维持时钟系统
+ */
+void clk_task()
+{
+	clk_t t;
+	//初始化时间
+	while (get_current_nettime(&t) != ESP_OK)
+	{
+		vTaskDelay(100 / portTICK_RATE_MS);
+	}
+
+	//get the time ok
+	tmr_set_global(t); //更新全局时间
+
+	t.cal.date += 1;
+	tmr_new(&t, update_global_cb, NULL, "UPDATE");
+
 	while (1)
 	{
-		
-		vTaskDelay(1000 / portTICK_RATE_MS);
+		//等待用户调用
+		EventBits_t bit = xEventGroupWaitBits(clk_event, UPDATE_CLK | NEW_TIMER, pdTRUE, pdFALSE, 1000 / portTICK_RATE_MS);
+		tmr_process(NULL);	//一秒到达，处理时钟事务
 
-		//未初始化，不能正常运行
-		if(global_clk_init_flag)
-			tmr_process(NULL);
+		//用户调用更新时间
+		if (bit & UPDATE_CLK)
+		{
+			while (get_current_nettime(&t) != ESP_OK)
+			{
+				vTaskDelay(100 / portTICK_RATE_MS);
+			}
+			tmr_set_global(t); //更新全局时间
+		}
+
+		//用户添加定时器
+		if (bit & NEW_TIMER)
+		{
+		}
 	}
 }
 
 /*
- * 全局时间初始化
- * 获取网络事件，设置定时器，自动更新全局时间
+ * 初始化时钟系统 创建时钟任务 设置事件组
  */
-int global_clk_init()
+void clk_init()
 {
-	if(global_clk_init_flag)
-		return ESP_FAIL;
-	clk_t *t = (clk_t *)malloc(sizeof(clk_t));
-	
-	if(get_current_nettime(t)!=ESP_OK)
-	{
-		free(t);
-		return ESP_FAIL;
-	}
-	tmr_set_global(*t); //更新全局时间
-	
-	t->cal.date += 1;
-	tmr_new(t, update_global_cb, NULL, "UPDATE"); //创建定时器，每24小时更新网络时间，并添加到列表
-	global_clk_init_flag = true;
-	free(t);
-	return ESP_OK;
+	esp_log_level_set(TAG, ESP_LOG_INFO);
+	ESP_LOGI(TAG, "init clk");
+	clk_event = xEventGroupCreate();
+	xEventGroupClearBits(clk_event, UPDATE_CLK | NEW_TIMER);
+
+	xTaskCreate(clk_task, "clock_Task", CLK_TASK_SIZE, NULL, CLK_TASK_PRO, NULL);
 }

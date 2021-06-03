@@ -13,19 +13,25 @@
 #include "board.h"
 #include "esp_system.h"
 
-#include "nvs_flash.h"
-#include "nvs.h"
-
-#include "buttonTask.h"
-
+//periph includes
+#include "general_gpio.h"
+#include "storage.h"
 #include "mywifi.h"
-
-#include "player.h"
 #include "irTask.h"
-#include "myhttp.h"
 #include "myds18b20.h"
+#include "myuart.h"
+
+//systerm includes
 #include "clock.h"
 
+//audio includes
+#include "player.h"
+
+//network includes
+#include "myhttp.h"
+#include "myble.h"
+
+//asr includes
 #include "audio_pipeline.h"
 #include "i2s_stream.h"
 #include "raw_stream.h"
@@ -34,41 +40,11 @@
 #include "esp_wn_models.h"
 #include "esp_mn_iface.h"
 #include "esp_mn_models.h"
-#include "mp3_decoder.h"
 #include "filter_resample.h"
 #include "rec_eng_helper.h"
-#include "fatfs_stream.h"
-#include "periph_button.h"
-#include "board.h"
-#include "esp_peripherals.h"
-#include "periph_touch.h"
-#include "periph_adc_button.h"
-#include "esp_wifi.h"
-#include "periph_wifi.h"
-#include "esp_event.h"
-#include "myuart.h"
 
-#include "lwip/sockets.h"
-#include "myble.h"
 
-static const char *TAG = "main.c";
-
-#define USE_HEAP_MANGER 0
-/*----任务配置----*/
-#define ASR_TASK_PRO 6
-#define BUTTON_TASK_PRO 4
-#define IR_TX_TASK_PRO 5
-#define IR_RX_TASK_PRO 6
-#define HTTP_GET_WEATHER_TASK_PRO 10
-#define HEAP_MANAGER_TASK_PRO 20
-
-#define ASR_TASK_SIZE 5120
-#define BUTTON_TASK_SIZE 4096
-#define IR_RX_TASK_SIZE 2048
-#define IR_TX_TASK_SIZE 2048
-#define HTTP_GET_WEATHER_TASK_SIZE 4096
-#define HEAP_MANAGER_TASK_SIZE 2048
-
+static const char *TAG = "main";
 
 typedef enum
 {
@@ -120,6 +96,8 @@ typedef enum
     ID36_XIANZAIJIDIAN = 36,
     ID37_HONGWAIXUEXI = 37,
 
+    ID38_YIXIAOSHIHOUDAKAIKONGTIAO=38,
+    ID39_LIANGXIAOSHIHOUGUANBIKONGTIAO=39,
     //测试
     ID40_SHIMIAOHOUGUANBIKONGTIAO = 40,
     ID41_JIUMIAOHOUDAKAIKONGTIAO = 41,
@@ -128,43 +106,34 @@ typedef enum
 } asr_multinet_event_t;
 
 static esp_err_t asr_multinet_control(int commit_id);
-void heap_manager_task(void *agr);
 
 void app_main()
 {
 
     esp_log_level_set("*", ESP_LOG_WARN);
     esp_log_level_set(TAG, ESP_LOG_INFO);
-    esp_err_t err;
 
-    uart_init();
-    storage_init();
-    led_init();
+
 
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
     esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
 
+    General_Gpio_init(set); 
+    uart_init();
+    IR_init();
+    ds18b20_get_data(); //首次上电需要读取一次,后续测量才会准确
+
+    storage_init();
+    
     player_init();
 
-    xTaskCreate(button_task, "btn", BUTTON_TASK_SIZE, set, BUTTON_TASK_PRO, NULL);
-
-    IR_init();
-    xTaskCreate(rmt_ir_txTask, "ir_tx", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, &ir_tx_handle);
-
-    xTaskCreate(rmt_ir_rxTask, "ir_rx", IR_RX_TASK_SIZE, NULL, IR_RX_TASK_PRO, NULL);
-
-    ds18b20_get_data(); //首次上电需要读取一次
-
-    httptask_init();
-
-    ble_init();
     wifi_init_sta();
+    //ble_init();
+    http_init();
 
-    xTaskCreate(clock_task, "clock_Task", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, NULL);
+    clk_init();
 
-#if USE_HEAP_MANGER
-    xTaskCreate(heap_manager_task, "heap_manager_task", HEAP_MANAGER_TASK_SIZE, NULL, HEAP_MANAGER_TASK_PRO, NULL);
-#endif
+    /* ----- 以下是语音识别程序 ------*/
 
     ESP_LOGI(TAG, "Initialize SR wn handle");
     esp_wn_iface_t *wakenet;                          //唤醒模型
@@ -263,7 +232,6 @@ void app_main()
             //检测buffer是否有唤醒词
             if (wakenet->detect(model_wn_data, (int16_t *)buffer) == WAKE_UP)
             {
-
                 LED_ON;
                 ESP_LOGI(TAG, "wake up");
                 enable_wn = false;
@@ -317,6 +285,7 @@ void app_main()
     free(buffer);
     buffer = NULL;
 }
+
 static char *weather, string[25] = {0};
 static float temp;
 static clk_t clk;
@@ -330,13 +299,17 @@ timer_cb ir_close_cb(struct timer *tmr, void *arg)
 
     if (id == 0)
     {
-        ac_open(false);
+        
         ESP_LOGI(TAG, "timer to close the aircon");
+        ac_open(false);
+        AC_CLOSE_MP3;
     }
     else
     {
-        ac_open(true);
+        
         ESP_LOGI(TAG, "timer to open the aircon");
+        ac_open(true);
+        AC_SUCCESS_MP3;
     }
 
     return NULL;
@@ -451,18 +424,19 @@ static esp_err_t asr_multinet_control(int commit_id)
             break;
 
         case ID15_YIXIAOSHIHOUGUANBIKONGTIAO:
-            clk.value = global_clk.value;
+
+            ESP_LOGI(TAG, "ID15_YIXIAOSHIHOUGUANBIKONGTIAO");
+            clk.value = get_clk();
             //clk.cal.hour += 1;
             clk.cal.second += 5;
             id = 0;
             tmr_new(&clk, ir_close_cb, &id, "1h");
-            goto timer;
-
-            ESP_LOGI(TAG, "ID15_YIXIAOSHIHOUGUANBIKONGTIAO");
+            //goto timer;
+            SETTMR_MP3;
             break;
 
         case ID16_LIANGXIAOSHIHOUGUANBIKONGTIAO:
-            clk.value = global_clk.value;
+            clk.value = get_clk();
             clk.cal.hour += 2;
             goto timer;
 
@@ -470,29 +444,24 @@ static esp_err_t asr_multinet_control(int commit_id)
             break;
 
         case ID17_SANXIAOSHIHOUGUANBIKONGTIAO:
-            clk.value = global_clk.value;
+            clk.value = get_clk();
             clk.cal.hour += 3;
             goto timer;
 
             ESP_LOGI(TAG, "ID17_SANXIAOSHIHOUGUANBIKONGTIAO");
             break;
         case ID18_SIXIAOSHIHOUGUANBIKONGTIAO:
-            clk.value = global_clk.value;
-            clk.cal.hour += 4;
-            goto timer;
 
-            weather = get_Weather_String(0);
-            speech_sync(weather);
             ESP_LOGI(TAG, "ID18_SIXIAOSHIHOUGUANBIKONGTIAO");
             break;
         case ID19_WUXIAOSHIHOUGUANBIKONGTIAO:
-            clk.value = global_clk.value;
+            clk.value = get_clk();
             clk.cal.hour += 5;
             goto timer;
             ESP_LOGI(TAG, "ID19_WUXIAOSHIHOUGUANBIKONGTIAO");
-
+            break;
         case ID20_LIUXIAOSHIHOUGUANBIKONGTIAO:
-            clk.value = global_clk.value;
+            clk.value = get_clk();
             clk.cal.hour += 6;
             goto timer;
             ESP_LOGI(TAG, "ID20_LIUXIAOSHIHOUGUANBIKONGTIAO");
@@ -500,28 +469,28 @@ static esp_err_t asr_multinet_control(int commit_id)
         case ID21_QIXIAOSHIHOUGUANBIKONGTIAO:
 
             ESP_LOGI(TAG, "ID21_QIXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = global_clk.value;
+            clk.value = get_clk();
             clk.cal.hour += 7;
             goto timer;
 
         case ID22_BAXIAOSHIHOUGUANBIKONGTIAO:
 
             ESP_LOGI(TAG, "ID22_BAXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = global_clk.value;
+            clk.value = get_clk();
             clk.cal.hour += 8;
             goto timer;
 
         case ID23_JIUXIAOSHIHOUGUANBIKONGTIAO:
 
             ESP_LOGI(TAG, "ID23_JIUXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = global_clk.value;
+            clk.value = get_clk();
             clk.cal.hour += 9;
             goto timer;
 
         case ID24_SHIXIAOSHIHOUGUANBIKONGTIAO:
 
             ESP_LOGI(TAG, "ID24_SHIXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = global_clk.value;
+            clk.value = get_clk();
             clk.cal.hour += 10;
             goto timer;
 
@@ -537,7 +506,6 @@ static esp_err_t asr_multinet_control(int commit_id)
             ESP_LOGI(TAG, "ID26_GUANBIKONGTIAO");
             break;
 
-           
         case ID30_DAKAILANYA:
 
             ESP_LOGI(TAG, "ID30_DAKAILANYA");
@@ -580,7 +548,8 @@ static esp_err_t asr_multinet_control(int commit_id)
 
         case ID36_XIANZAIJIDIAN:
             ESP_LOGI(TAG, "ID36_XIANZAIJIDIAN");
-            sprintf(string, "20%d-%d-%d %d:%d:%d\r\n", global_clk.cal.year, global_clk.cal.month, global_clk.cal.date, global_clk.cal.hour, global_clk.cal.minute, global_clk.cal.second);
+            clk.value = get_clk();
+            sprintf(string, "20%d-%d-%d %d:%d:%d\r\n", clk.cal.year, clk.cal.month, clk.cal.date, clk.cal.hour, clk.cal.minute, clk.cal.second);
             speech_sync(string);
 
             break;
@@ -588,9 +557,16 @@ static esp_err_t asr_multinet_control(int commit_id)
             ESP_LOGI(TAG, "ID37_HONGWAIXUEXI");
             ir_study();
             break;
+        case ID38_YIXIAOSHIHOUDAKAIKONGTIAO:
+            ESP_LOGI(TAG, "ID38_YIXIAOSHIHOUDAKAIKONGTIAO");
+            break;
+        case ID39_LIANGXIAOSHIHOUGUANBIKONGTIAO:
+            ESP_LOGI(TAG, "ID39_LIANGXIAOSHIHOUGUANBIKONGTIAO");
+            break;
+
         case ID40_SHIMIAOHOUGUANBIKONGTIAO:
             ESP_LOGI(TAG, "ID40_SHIMIAOHOUGUANBIKONGTIAO:%s", string);
-            clk.value = global_clk.value;
+            clk.value = get_clk();
             clk.cal.second += 10;
             id = 0;
             tmr_new(&clk, ir_close_cb, &id, "10s");
@@ -599,7 +575,7 @@ static esp_err_t asr_multinet_control(int commit_id)
             break;
         case ID41_JIUMIAOHOUDAKAIKONGTIAO:
             ESP_LOGI(TAG, "ID41_WUMIAOHOUDAKAIKONGTIAO");
-            clk.value = global_clk.value;
+            clk.value = get_clk();
             clk.cal.second += 9;
             id = 1;
             tmr_new(&clk, ir_close_cb, &id, "5s");
@@ -622,35 +598,8 @@ timer:
     return ESP_OK;
 }
 
-////////////////////////////////////////////////////////////////////
 
-#if USE_HEAP_MANGER
-/* 
- * 堆栈管理任务
- * 打印各个任务的堆栈使用情况
- */
-void heap_manager_task(void *agr)
-{
-    const char *TAG = "heap_manger";
 
-    esp_log_level_set(TAG, ESP_LOG_INFO);
 
-    while (1)
-    {
-        vTaskDelay(10000 / portTICK_RATE_MS); //10s
 
-        //printf("---heap manger---\r\n");
-        //打印任务的堆栈情况
-        //printf("%-10.10s,free heap:%d\r\n",pcTaskGetTaskName(buttonTask_handle),uxTaskGetStackHighWaterMark(buttonTask_handle));
-        //printf("%-10.10s,free heap:%d\r\n",pcTaskGetTaskName(ir_tx_handle),uxTaskGetStackHighWaterMark(ir_tx_handle));
-        //printf("%-10.10s,free heap:%d\r\n",pcTaskGetTaskName(ir_rx_handle),uxTaskGetStackHighWaterMark(ir_rx_handle));
-        //printf("%-10.10s,free heap:%d\r\n",pcTaskGetTaskName(ASR_task_handle),uxTaskGetStackHighWaterMark(ASR_task_handle));
 
-        //打印全局时间
-        printf("20%d-%d-%d %d:%d:%d\r\n", global_clk.cal.year, global_clk.cal.month, global_clk.cal.date, global_clk.cal.hour, global_clk.cal.minute, global_clk.cal.second);
-        printf_tmrlist();
-        //printf("---heap manger---\r\n");
-    }
-}
-
-#endif

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-06 09:50:47
- * @LastEditTime: 2021-03-24 08:47:08
+ * @LastEditTime: 2021-06-03 23:58:31
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_smartcontrol\main\periph\mywifi.h
@@ -19,10 +19,6 @@
 #include <string.h>
 
 #include "esp_wifi.h"
-
-
-
-
 
 
 void wifi_init_sta(void);

@@ -4,7 +4,7 @@
 
 
 /*
- * reset the ds18b20
+ * reset the ds18b20 
  */
 static int ds18b20_reset()
 {
@@ -22,7 +22,6 @@ static int ds18b20_reset()
     {
         ets_delay_us( 1 );
         err++;
-
     }
     ets_delay_us(470);
     while(!gpio_get_level(DB18B20_PIN))

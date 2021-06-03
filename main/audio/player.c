@@ -79,7 +79,7 @@ int _http_stream_event_handle(http_stream_event_msg_t *msg)
 
 /*
  * 播放器初始化
- * 可播放flash内mp3与http音频流
+ * 可播放flash mp3与http音频流
  */
 int player_init()
 {

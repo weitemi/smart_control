@@ -10,11 +10,10 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
-#include "clock.h"
 
-#define EXAMPLE_ESP_WIFI_SSID "prx"
-#define EXAMPLE_ESP_WIFI_PASS "123456789"
-#define EXAMPLE_ESP_MAXIMUM_RETRY 20
+#define EXAMPLE_ESP_WIFI_SSID "esp"
+#define EXAMPLE_ESP_WIFI_PASS "07685812870"
+#define MAXIMUM_RETRY 20
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -25,7 +24,7 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 
-static const char *TAG = "mywifi.c";
+static const char *TAG = "wifi station";
 
 static int s_retry_num = 0;
 
@@ -38,33 +37,41 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        //wifi断开
-        if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY)
+   
+        //wifi断开，清除连接标志
+        xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+        //todo 此处应有led表示wifi状态
+
+        //尝试重连
+        if (s_retry_num < MAXIMUM_RETRY)
         {
             //重新连接
             esp_wifi_connect();
             s_retry_num++;
-            ESP_LOGI(TAG, "retry to connect to the AP");
+            ESP_LOGI(TAG, "retry to connect to the AP...");
+            
         }
         else
         {
             //重连次数超过
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
         }
-        //清除连接标志
-        xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+        
         ESP_LOGI(TAG, "connect to the AP fail");
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
+        //todo 获取到ip地址，此处应有led指示 
+
+        //获取ip事件数据 并打印ip信息
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "got ip:%s",
                  ip4addr_ntoa(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
 
-        //连接到wifi后
-        global_clk_init();
+        //连接到wifi后 获取全局时钟，更新百度token
+
         update_access_token();
     }
 }
@@ -75,62 +82,31 @@ static void event_handler(void *arg, esp_event_base_t event_base,
  */
 void wifi_init_sta()
 {
-
     esp_log_level_set(TAG, ESP_LOG_INFO);
 
     s_wifi_event_group = xEventGroupCreate();
 
-    tcpip_adapter_init();
+    tcpip_adapter_init();   //安装tcpip适配器
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
+    //注册wifi/ip事件回调函数
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
 
+    //设置wifi为station模式
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    //!注释掉，防止每次上电都要连接代码中的wifi配置
+    //!以下语句注释掉，防止每次上电都要连接代码中的wifi配置
     //ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 
-    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
-     * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
-    #if 0
-    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-                                           WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-                                           pdFALSE,
-                                           pdFALSE,
-                                           portMAX_DELAY);
-
-    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-     * happened. */
-    
-    if (bits & WIFI_CONNECTED_BIT)
-    {
-        ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
-    }
-    else if (bits & WIFI_FAIL_BIT)
-    {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
-    }
-    else
-    {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT");
-    }
-
-    //保留回调函数，处理断线重连
-    //ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler));
-    //ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler));
-    //vEventGroupDelete(s_wifi_event_group);
-    #endif
 }
-#if 1
+
 /*
  * 更新wifi配置 用于更换路由器
  * ssid:ap名称
@@ -172,7 +148,6 @@ int wifi_update(const char *ssid,const char *password)
 
 
 }
-#endif
 /*
  * wifi连接状态查询
  * 返回：1：连接 0：未连接

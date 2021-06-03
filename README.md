@@ -1,7 +1,7 @@
 <!--
  * @Author: your name
  * @Date: 2021-03-06 09:55:31
- * @LastEditTime: 2021-03-26 09:26:58
+ * @LastEditTime: 2021-06-04 00:13:45
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\README.md
@@ -19,6 +19,8 @@
 ### 烧录
 
 根据partitions.cv的地址安排，烧录二进制文件，可使用esptool.py或烧录软件，如图：
+
+http://m.qpic.cn/psc?/V52o58sF1Om7WA2cK9TD1YG4la1SnXbV/45NBuzDIW489QBoVep5mcf7e8kPaoZhI6FN*E3CXjG0OsGC4XS6GolTsqSDGzWFzS9HX8V8a2VPETFG.PJQiCPOIAwhut2faMHhCHYXzL1I!/b&bo=cQfJAAAAAAADF40!&rf=viewer_4
 
 ### 运行
 

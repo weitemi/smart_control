@@ -11,11 +11,16 @@
 #include "driver/rmt.h"
 #include "driver/periph_ctrl.h"
 #include "soc/rmt_reg.h"
-#include "mynvs.h"
+#include "storage.h"
 #include "ir_decode.h"
-#include "esp_spiffs.h"
-
 #include "driver/gpio.h"
+
+#define IR_TX_TASK_PRO 5
+#define IR_RX_TASK_PRO 6
+
+#define IR_RX_TASK_SIZE 2048
+#define IR_TX_TASK_SIZE 2048
+
 
 #define RMT_RX_ACTIVE_LEVEL  0   /*!< If we connect with a IR receiver, the data is active low */
 #define RMT_TX_CARRIER_EN    1   /*!< Enable carrier for IR transmitter test with IR led */
@@ -83,8 +88,7 @@ struct AC_Control
     t_remote_ac_status status;  //空调控制结构体
 };
 
-//空调结构体，用于控制空调
-static struct AC_Control ac_handle; 
+
 
 //接收到的红外信号
 struct RX_signal
@@ -98,8 +102,6 @@ struct RX_signal
 
 
 
-
-TaskHandle_t ir_tx_handle;
 uint8_t ac_set_code_lib(uint8_t band, uint8_t pro_code);
 int ac_set_temp(int temp);
 int ac_open(bool open);
@@ -107,10 +109,6 @@ int ac_set_wind_speed(int speed);
 int ac_set_swing(bool open);
 
 void ir_study();    //开启学习
-int IR_init();  //初始化
-int storage_init(); //存储系统，文件系统初始化
+void IR_init();  //初始化
 
-
-void rmt_ir_txTask(void *agr);
-void rmt_ir_rxTask(void *agr);
 #endif

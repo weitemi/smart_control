@@ -165,7 +165,7 @@ void http_api_task(void *arg)
             res = ESP_FAIL;
             
         }
-        //处理不同的api
+        //网络已经连接，处理不同的api
         if (bit & GET_TIME_BIT)
         {
             //获取网络时间
@@ -318,7 +318,7 @@ void http_api_task(void *arg)
  * http任务初始化
  * 创建http任务，获取网络时间 更新token
  */
-void httptask_init()
+void http_init()
 {
     esp_log_level_set(TAG, ESP_LOG_INFO);
 

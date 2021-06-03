@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-24 08:40:13
- * @LastEditTime: 2021-03-24 09:04:35
+ * @LastEditTime: 2021-06-04 00:16:14
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\periph\myuart.c
@@ -13,13 +13,18 @@
 #include "freertos/FreeRTOS.h"
 #include "mywifi.h"
 
-static const int RX_BUF_SIZE = 1024;
+const int RX_BUF_SIZE = 1024;
+const char *RX_TASK_TAG = "UART_RX";
 
-
-
+/*
+ * 串口接收初始化 用于接收控制台wifi
+ *
+ */
 int uart_init()
 {
     esp_err_t err;
+    esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
+    
     const uart_config_t uart_config = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
@@ -35,13 +40,15 @@ int uart_init()
     return err;
 }
 
-
-static void rx_task()
+/*
+ * 串口接收任务 接收控制台数据
+ */
+void rx_task()
 {
-    static const char *RX_TASK_TAG = "RX_TASK";
-    esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
+    //todo 能否用局部变量？
     uint8_t *data = (uint8_t *)malloc(RX_BUF_SIZE + 1);
     static char ssid[10]={0}, password[20]={0};
+    
     while (1)
     {
         const int rxBytes = uart_read_bytes(UART_NUM_0, data, RX_BUF_SIZE, 1000 / portTICK_RATE_MS);

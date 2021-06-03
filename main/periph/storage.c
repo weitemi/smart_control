@@ -1,7 +1,15 @@
-#include "mynvs.h"
-#include "mywifi.h"
-static const char *TAG = "MY_NVS";
+/*
+ * @Author: your name
+ * @Date: 2021-06-03 19:12:02
+ * @LastEditTime: 2021-06-03 23:53:34
+ * @LastEditors: Please set LastEditors
+ * @Description: In User Settings Edit
+ * @FilePath: \esp-adf\examples\myapp\off_asr\main\periph\storage.c
+ */
 
+#include "storage.h"
+
+static const char *TAG = "STORAGE";
 
 /*
  * 将ac_handle数据写入nvs
@@ -46,7 +54,6 @@ esp_err_t nvs_save_ac_code(uint8_t code, const char *key)
 
     return ESP_OK;
 }
-
 /*
  * 从nvs中读取ac_handle
  * key 键
@@ -134,7 +141,6 @@ esp_err_t nvs_save_items(rmt_item32_t *item, size_t items_size, const char *key)
 
     return ESP_OK;
 }
-
 /*
  * 从nvs中读取item
  * key 键
@@ -184,7 +190,6 @@ rmt_item32_t *nvs_get_items(size_t *item_size, const char *key)
 
     return items;
 }
-
 /*
  * brief 删除nvs中指定key的item
  * 返回 err状态码
@@ -228,3 +233,65 @@ esp_err_t nvs_delete_items(const char *key)
     return ESP_OK;
 }
 
+/*
+ * 存储系统初始化
+ * 包含nvs_flash，spiffs文件系统
+ * return 1：成功；0：失败
+ */
+int storage_init()
+{
+
+    esp_log_level_set(TAG, ESP_LOG_INFO);
+
+    ESP_LOGI(TAG, "Initializing storage");
+    esp_err_t err = nvs_flash_init(); //nvs初始化
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES)
+    {
+        // NVS partition was truncated and needs to be erased
+        // Retry nvs_flash_init
+        ESP_ERROR_CHECK(nvs_flash_erase()); //擦除nvs
+        err = nvs_flash_init();             //重新初始化
+    }
+
+    ESP_LOGI(TAG, "Initializing SPIFFS");
+
+    //配置spiffs文件系统
+    esp_vfs_spiffs_conf_t conf = {
+        .base_path = "/spiffs", //文件系统的根目录
+        .partition_label = NULL,
+        .max_files = 5, //最多五个文件
+        .format_if_mount_failed = true};
+
+    esp_err_t ret = esp_vfs_spiffs_register(&conf); //注册spiffs文件系统
+
+    if (ret != ESP_OK)
+    {
+        if (ret == ESP_FAIL)
+        {
+            ESP_LOGE(TAG, "Failed to mount or format filesystem");
+        }
+        else if (ret == ESP_ERR_NOT_FOUND)
+        {
+            ESP_LOGE(TAG, "Failed to find SPIFFS partition");
+        }
+        else
+        {
+            ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
+        }
+        return 0;
+    }
+
+    size_t total = 0, used = 0;                 //文件系统总大小，已使用的空间
+    ret = esp_spiffs_info(NULL, &total, &used); //获取spiffs系统的信息
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
+        return 0;
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
+    }
+
+    return 1;
+}

@@ -613,14 +613,14 @@ void rmt_ir_txTask(void *agr)
     vTaskDelete(NULL);
 }
 /*
- * 红外初始化
- * brief：初始化红外的相关变量。红外外设。创建任务
+ * 红外模块初始化
+ * brief：初始化红外的相关变量。红外外设。创建发送和接收任务
  * 返回：1成功
 */
-int IR_init()
+void IR_init()
 {
     esp_log_level_set(TAG, ESP_LOG_INFO);
-
+    ESP_LOGI(TAG, "init Ir");
     //初始化空调结构体的红外信息
     ac_handle.status.ac_mode = AC_MODE_COOL;
     ac_handle.status.ac_power = AC_POWER_ON;
@@ -648,7 +648,7 @@ int IR_init()
     }
     else
     {
-        ESP_LOGI(TAG, "nvs_get_ac_lib temp=%u", *temp);
+        ESP_LOGI(TAG, "获取码库编码成功 code=%u", *temp);
         ac_handle.code = *temp; //成功读取nvs的数据，保存到ac_handle
         free(temp);
     }
@@ -658,66 +658,8 @@ int IR_init()
     nec_tx_init(); //发射器初始化
     nec_rx_init();
 
-    return 1;
+    xTaskCreate(rmt_ir_txTask, "ir_tx", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, &ir_tx_handle);
+    xTaskCreate(rmt_ir_rxTask, "ir_rx", IR_RX_TASK_SIZE, NULL, IR_RX_TASK_PRO, NULL);
+
 }
-/*
- * spiffs文件系统初始化
- * return 1：成功；0：失败
- */
-int storage_init()
-{
-    const char *TAG = "STORAGE";
-    esp_log_level_set(TAG, ESP_LOG_INFO);
 
-    ESP_LOGI(TAG, "Initializing nvs_flash");
-    esp_err_t err = nvs_flash_init(); //nvs初始化
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES)
-    {
-        // NVS partition was truncated and needs to be erased
-        // Retry nvs_flash_init
-        ESP_ERROR_CHECK(nvs_flash_erase()); //擦除nvs
-        err = nvs_flash_init();             //重新初始化
-    }
-
-    ESP_LOGI(TAG, "Initializing SPIFFS");
-
-    //配置spiffs文件系统
-    esp_vfs_spiffs_conf_t conf = {
-        .base_path = "/spiffs", //文件系统的根目录
-        .partition_label = NULL,
-        .max_files = 5, //最多五个文件
-        .format_if_mount_failed = true};
-
-    esp_err_t ret = esp_vfs_spiffs_register(&conf); //注册spiffs文件系统
-
-    if (ret != ESP_OK)
-    {
-        if (ret == ESP_FAIL)
-        {
-            ESP_LOGE(TAG, "Failed to mount or format filesystem");
-        }
-        else if (ret == ESP_ERR_NOT_FOUND)
-        {
-            ESP_LOGE(TAG, "Failed to find SPIFFS partition");
-        }
-        else
-        {
-            ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
-        }
-        return 0;
-    }
-
-    size_t total = 0, used = 0;                 //文件系统总大小，已使用的空间
-    ret = esp_spiffs_info(NULL, &total, &used); //获取spiffs系统的信息
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
-        return 0;
-    }
-    else
-    {
-        ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
-    }
-
-    return 1;
-}
