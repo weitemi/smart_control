@@ -17,7 +17,7 @@
 #include "general_gpio.h"
 #include "storage.h"
 #include "mywifi.h"
-#include "irTask.h"
+#include "ir.h"
 #include "myds18b20.h"
 #include "myuart.h"
 
@@ -112,8 +112,6 @@ void app_main()
 
     esp_log_level_set("*", ESP_LOG_WARN);
     esp_log_level_set(TAG, ESP_LOG_INFO);
-
-
 
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
     esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
@@ -426,7 +424,7 @@ static esp_err_t asr_multinet_control(int commit_id)
         case ID15_YIXIAOSHIHOUGUANBIKONGTIAO:
 
             ESP_LOGI(TAG, "ID15_YIXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             //clk.cal.hour += 1;
             clk.cal.second += 5;
             id = 0;
@@ -436,7 +434,7 @@ static esp_err_t asr_multinet_control(int commit_id)
             break;
 
         case ID16_LIANGXIAOSHIHOUGUANBIKONGTIAO:
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             clk.cal.hour += 2;
             goto timer;
 
@@ -444,7 +442,7 @@ static esp_err_t asr_multinet_control(int commit_id)
             break;
 
         case ID17_SANXIAOSHIHOUGUANBIKONGTIAO:
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             clk.cal.hour += 3;
             goto timer;
 
@@ -455,13 +453,13 @@ static esp_err_t asr_multinet_control(int commit_id)
             ESP_LOGI(TAG, "ID18_SIXIAOSHIHOUGUANBIKONGTIAO");
             break;
         case ID19_WUXIAOSHIHOUGUANBIKONGTIAO:
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             clk.cal.hour += 5;
             goto timer;
             ESP_LOGI(TAG, "ID19_WUXIAOSHIHOUGUANBIKONGTIAO");
             break;
         case ID20_LIUXIAOSHIHOUGUANBIKONGTIAO:
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             clk.cal.hour += 6;
             goto timer;
             ESP_LOGI(TAG, "ID20_LIUXIAOSHIHOUGUANBIKONGTIAO");
@@ -469,28 +467,28 @@ static esp_err_t asr_multinet_control(int commit_id)
         case ID21_QIXIAOSHIHOUGUANBIKONGTIAO:
 
             ESP_LOGI(TAG, "ID21_QIXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             clk.cal.hour += 7;
             goto timer;
 
         case ID22_BAXIAOSHIHOUGUANBIKONGTIAO:
 
             ESP_LOGI(TAG, "ID22_BAXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             clk.cal.hour += 8;
             goto timer;
 
         case ID23_JIUXIAOSHIHOUGUANBIKONGTIAO:
 
             ESP_LOGI(TAG, "ID23_JIUXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             clk.cal.hour += 9;
             goto timer;
 
         case ID24_SHIXIAOSHIHOUGUANBIKONGTIAO:
 
             ESP_LOGI(TAG, "ID24_SHIXIAOSHIHOUGUANBIKONGTIAO");
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             clk.cal.hour += 10;
             goto timer;
 
@@ -548,7 +546,7 @@ static esp_err_t asr_multinet_control(int commit_id)
 
         case ID36_XIANZAIJIDIAN:
             ESP_LOGI(TAG, "ID36_XIANZAIJIDIAN");
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             sprintf(string, "20%d-%d-%d %d:%d:%d\r\n", clk.cal.year, clk.cal.month, clk.cal.date, clk.cal.hour, clk.cal.minute, clk.cal.second);
             speech_sync(string);
 
@@ -566,7 +564,7 @@ static esp_err_t asr_multinet_control(int commit_id)
 
         case ID40_SHIMIAOHOUGUANBIKONGTIAO:
             ESP_LOGI(TAG, "ID40_SHIMIAOHOUGUANBIKONGTIAO:%s", string);
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             clk.cal.second += 10;
             id = 0;
             tmr_new(&clk, ir_close_cb, &id, "10s");
@@ -575,7 +573,7 @@ static esp_err_t asr_multinet_control(int commit_id)
             break;
         case ID41_JIUMIAOHOUDAKAIKONGTIAO:
             ESP_LOGI(TAG, "ID41_WUMIAOHOUDAKAIKONGTIAO");
-            clk.value = get_clk();
+            clk.value = get_clk_value();
             clk.cal.second += 9;
             id = 1;
             tmr_new(&clk, ir_close_cb, &id, "5s");

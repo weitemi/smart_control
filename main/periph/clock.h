@@ -1,7 +1,7 @@
 /*
  * @Author: prx
  * @Date: 2020-12-19 16:48:34
- * @LastEditTime: 2021-06-04 00:03:10
+ * @LastEditTime: 2021-06-04 08:22:45
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adfd:\MyNote\clk_t\clk_t.h
@@ -38,7 +38,11 @@ union clk
 
 typedef union clk clk_t;
 struct timer;
-typedef void (*timer_cb)(struct timer *tmr ,void *arg);
+
+typedef void (*timer_cb)(struct timer *tmr ,void *arg);	//定义一个回调函数指针的类型
+typedef int (*timer_add)(struct timer *tmr);
+typedef int (*timer_del)(struct timer *tmr);
+typedef int (*timer_remove)(struct timer *tmr);
 
 //定时任务结构体
 struct timer
@@ -48,22 +52,17 @@ struct timer
     clk_t timeout;	//定时的时间
     timer_cb cb;	//回调函数
     void *arg;	//回调参数
+	timer_add add;	//添加定时任务到列表
+	timer_remove remove;	//从列表移除定时任务
+	timer_del delete;	//删除定时任务
 };
 
 
 void printf_tmrlist();	//打印定时列表
-struct timer *tmr_new(clk_t *conf,timer_cb cb,void *arg,char *name); //新建闹钟
 
-int tmr_add(struct timer *tmr);	//添加定时任务
-int tmr_remove(struct timer *tmr);	//移除定时任务
-int tmr_delete(struct timer *tmr);	//删除定时任务
-
-void tmr_process(void *arg);	//定时任务处理
-
-
-//
+struct timer *tmr_new(clk_t *conf,timer_cb cb,void *arg,char *name); //新建闹钟	
 void clk_init();
 void update_clk();
-uint32_t get_clk();	//获取时间
+uint32_t get_clk_value();	//获取时间
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef _IRTASK_
-#define _IRTASK_
+#ifndef _IR_H_
+#define _IR_H_
 #include <stdio.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"

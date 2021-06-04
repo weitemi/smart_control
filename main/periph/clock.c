@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-12-19 16:48:59
- * @LastEditTime: 2021-06-04 00:11:32
+ * @LastEditTime: 2021-06-04 08:32:40
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adfd:\MyNote\clk_t\clk_t.c
@@ -90,54 +90,6 @@ exit:
 	}
 	return 0;
 }
-/*
- * 创建一个定时器 并添加进定时队列
- * conf：定时时间
- * cb：定时回调函数
- * arg：回调函数参数
- * name：定时器名
- * 返回：定时器结构体指针
- */
-struct timer *tmr_new(clk_t *conf, timer_cb cb, void *arg, char *name)
-{
-	struct timer *tmr;
-	clk_t clk;
-
-	//tmr must > global_clk
-	if (conf == NULL || (conf->value <= global_clk.value))
-	{
-		ESP_LOGI(TAG, "new tmr error\n");
-		return 0;
-	}
-	tmr = (struct timer *)malloc(sizeof(struct timer));
-	//chcek the conf
-
-	clk.value = conf->value;
-	save_clk(&clk); //规范化clk
-	ESP_LOGI(TAG, "new timer %s: 20%d-%d-%d %d:%d:%d values =%u\r\n", name, clk.cal.year, clk.cal.month, clk.cal.date, clk.cal.hour, clk.cal.minute, clk.cal.second, clk.value);
-	//printf("new timer %s: 20%d-%d-%d %d:%d:%d values =%u\r\n", name, clk.cal.year, clk.cal.month, clk.cal.date, clk.cal.hour, clk.cal.minute, clk.cal.second, clk.value);
-	tmr->timeout.value = clk.value; //将clk赋值给定时器
-
-	if (cb != NULL)
-	{
-		tmr->cb = cb;
-	}
-	if (arg != NULL)
-	{
-		tmr->arg = arg;
-	}
-	if (name != NULL)
-	{
-		char *dest = (char *)malloc(strlen(name));
-		strncpy(dest, name, strlen(name) + 1);
-		tmr->name = dest;
-	}
-	tmr->next = NULL;
-
-	tmr_add(tmr);
-	printf_tmrlist();
-	return tmr;
-}
 
 /*
  * 将定时器插入链表，按时间先后顺序
@@ -199,22 +151,6 @@ int tmr_add(struct timer *tmr)
 	}
 	return 1;
 }
-void printf_tmrlist()
-{
-	if (timer_list == NULL)
-	{
-		return;
-	}
-	printf("timer list:\r\n");
-	struct timer *t = timer_list;
-	do
-	{
-		printf("%s: 20%d-%d-%d %d:%d:%d \r\n", t->name, t->timeout.cal.year, t->timeout.cal.month, t->timeout.cal.date, t->timeout.cal.hour, t->timeout.cal.minute, t->timeout.cal.second);
-
-		//printf("%s value = %u\r\n", t->name, t->timeout.value);
-		t = t->next;
-	} while (t != NULL);
-}
 /*
  * 将定时器从链表移除
  * tmr：要移除的定时器
@@ -269,7 +205,6 @@ int tmr_remove(struct timer *tmr)
 
 	return 1;
 }
-
 /*
  * 删除定时器，释放定时器占用的内存
  * tmr：要删除的定时器
@@ -282,7 +217,7 @@ int tmr_delete(struct timer *tmr)
 		return 0;
 	}
 
-	tmr_remove(tmr);
+	tmr->remove(tmr);
 
 	free(tmr->name);
 
@@ -290,6 +225,76 @@ int tmr_delete(struct timer *tmr)
 
 	return 1;
 }
+/*
+ * 创建一个定时器 并添加进定时队列
+ * conf：定时时间
+ * cb：定时回调函数
+ * arg：回调函数参数
+ * name：定时器名
+ * 返回：定时器结构体指针
+ */
+struct timer *tmr_new(clk_t *conf, timer_cb cb, void *arg, char *name)
+{
+	struct timer *tmr;
+	clk_t clk;
+
+	//tmr must > global_clk
+	if (conf == NULL || (conf->value <= global_clk.value))
+	{
+		ESP_LOGI(TAG, "new tmr error\n");
+		return 0;
+	}
+	tmr = (struct timer *)malloc(sizeof(struct timer));
+	tmr->add = tmr_add;
+	tmr->delete = tmr_delete;
+	tmr->remove = remove;
+	//chcek the conf
+
+	clk.value = conf->value;
+	save_clk(&clk); //规范化clk
+	ESP_LOGI(TAG, "new timer %s: 20%d-%d-%d %d:%d:%d values =%u\r\n", name, clk.cal.year, clk.cal.month, clk.cal.date, clk.cal.hour, clk.cal.minute, clk.cal.second, clk.value);
+	//printf("new timer %s: 20%d-%d-%d %d:%d:%d values =%u\r\n", name, clk.cal.year, clk.cal.month, clk.cal.date, clk.cal.hour, clk.cal.minute, clk.cal.second, clk.value);
+	tmr->timeout.value = clk.value; //将clk赋值给定时器
+
+	if (cb != NULL)
+	{
+		tmr->cb = cb;
+	}
+	if (arg != NULL)
+	{
+		tmr->arg = arg;
+	}
+	if (name != NULL)
+	{
+		char *dest = (char *)malloc(strlen(name));
+		strncpy(dest, name, strlen(name) + 1);
+		tmr->name = dest;
+	}
+	tmr->next = NULL;
+
+	tmr->add(tmr);
+	printf_tmrlist();
+	return tmr;
+}
+
+void printf_tmrlist()
+{
+	if (timer_list == NULL)
+	{
+		return;
+	}
+	printf("timer list:\r\n");
+	struct timer *t = timer_list;
+	do
+	{
+		printf("%s: 20%d-%d-%d %d:%d:%d \r\n", t->name, t->timeout.cal.year, t->timeout.cal.month, t->timeout.cal.date, t->timeout.cal.hour, t->timeout.cal.minute, t->timeout.cal.second);
+
+		//printf("%s value = %u\r\n", t->name, t->timeout.value);
+		t = t->next;
+	} while (t != NULL);
+}
+
+
 
 
 /*
@@ -316,7 +321,7 @@ void tmr_process(void *arg)
 	//printf("timer_list value = %d\n",t->timeout.value);
 	if (global_clk.value == (t->timeout.value))
 	{
-		tmr_remove(t); //若要重复定时，只需要在回调函数中调用tmr_add()
+		t->remove(t); //若要重复定时，只需要在回调函数中调用tmr_add()
 
 		printf("timer %s\n", t->name);
 		t->cb(t, t->arg); //callback func
@@ -397,14 +402,14 @@ timer_cb update_global_cb(struct timer *tmr, void *agr)
 	tmr->timeout.value = global_clk.value;
 	tmr->timeout.cal.date += 1;
 
-	tmr_add(tmr); //将更新任务再次添加进
+	tmr->add(tmr); //将更新任务再次添加进
 	return NULL;
 }
 
 
 
 
-uint32_t get_clk()
+uint32_t get_clk_value()
 {
 	return global_clk.value;
 }

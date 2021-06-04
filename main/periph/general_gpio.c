@@ -1,13 +1,13 @@
 /*
  * @Author: your name
  * @Date: 2020-10-25 15:01:11
- * @LastEditTime: 2021-06-03 23:49:53
+ * @LastEditTime: 2021-06-04 08:36:40
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\periph\buttonTask.c
  */
 #include "general_gpio.h"
-#include "irTask.h"
+#include "ir.h"
 
 #include "myhttp.h"
 #include "myble.h"
@@ -41,7 +41,7 @@ void button_task(void *arg)
                 //ESP_LOGI(TAG, "k2 :send message:");
                 //ir_study();     //红外学习
                 //ble_close();
-                t.value = get_clk();
+                t.value = get_clk_value();
                 ESP_LOGI(TAG, "now time %d",t.cal.second);
             }
             else if ((int)msg.data == KEY1)

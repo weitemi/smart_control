@@ -1,6 +1,7 @@
 
-#include "irTask.h"
+#include "ir.h"
 
+/* 空调红外学习的编码序列 （打开 制冷模式 26° 自动扫风 一级风速） */
 #define GREE_CODE_2 0x0200a59
 #define GREE_CODE_4 0x0200a59
 #define MEIDI_CODE_1 0x6f9b24d

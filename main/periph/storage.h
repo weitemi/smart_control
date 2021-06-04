@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-06-03 19:11:52
- * @LastEditTime: 2021-06-04 00:00:47
+ * @LastEditTime: 2021-06-04 08:36:23
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\periph\storage.h
@@ -16,7 +16,7 @@
 #include "esp_spiffs.h"
 #include "nvs_flash.h"
 #include "nvs.h"
-#include "irTask.h"
+#include "ir.h"
 
 #define AC_DEFAULT "ac-code"
 #define IR_STORAGE_NAMESPACE "ir_data"
