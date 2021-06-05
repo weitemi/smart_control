@@ -30,6 +30,7 @@
 //network includes
 #include "myhttp.h"
 #include "myble.h"
+#include "mymqtt.h"
 
 //asr includes
 #include "audio_pipeline.h"

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-10-25 15:01:11
- * @LastEditTime: 2021-06-04 08:36:40
+ * @LastEditTime: 2021-06-05 10:07:29
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\periph\buttonTask.c
@@ -12,6 +12,7 @@
 #include "myhttp.h"
 #include "myble.h"
 #include "clock.h"
+#include "mymqtt.h"
 
 static const char *TAG = "General_Gpio";
 audio_event_iface_handle_t evt;
@@ -41,12 +42,14 @@ void button_task(void *arg)
                 //ESP_LOGI(TAG, "k2 :send message:");
                 //ir_study();     //红外学习
                 //ble_close();
-                t.value = get_clk_value();
-                ESP_LOGI(TAG, "now time %d",t.cal.second);
+                //t.value = get_clk_value();
+                //ESP_LOGI(TAG, "now time %d",t.cal.second);
+                mqtt_publish_ac_status();
             }
             else if ((int)msg.data == KEY1)
             {
-                ble_open();
+                //ble_open();
+                mqtt_publish_temp();
             }
         }
     }

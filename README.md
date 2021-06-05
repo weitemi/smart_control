@@ -1,7 +1,7 @@
 <!--
  * @Author: your name
  * @Date: 2021-03-06 09:55:31
- * @LastEditTime: 2021-06-04 09:28:31
+ * @LastEditTime: 2021-06-05 13:10:36
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\README.md
@@ -65,6 +65,22 @@ http://m.qpic.cn/psc?/V52o58sF1Om7WA2cK9TD1YG4la1SnXbV/45NBuzDIW489QBoVep5mcf7e8
 #### http请求
 
 该部分代码位于myhttp.c中，主要负责网络时间，天气数据，百度token的获取。
+
+#### MQTT客户端
+
+使用华为云iot接入
+默认有两个主题，用于华为云控制台与设备端的通信。
+TOPIC_REPORT，TOPIC_ORDER默认订阅。
+
+可汇报数据：室内温度，空调状态，温度，定时任务？
+ - temp:(int)36
+ - ir_status:(int)open,temperature,windspeed,
+ - timer: (string)timer_name,(string)time
+
+可控制的动作：空调的控制，读取温度，设置定时任务，红外学习
+ - ir_status:(int)open,temperature,windspeed,
+ - timer: (string)timer_name,(string)time
+ - ir_study:(int) open
 
 #### 传感器
 
@@ -142,6 +158,8 @@ CONFIG_CN_SPEECH_COMMAND_ID41="jiu miao hou da kai kong tiao"
 ## 目前的问题
 
 语音识别精度不够
+
+加入mqtt
 
 
 

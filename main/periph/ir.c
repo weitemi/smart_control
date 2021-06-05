@@ -30,7 +30,6 @@ static SemaphoreHandle_t IR_sem;
 
 struct RX_signal rx_sig = {0};
 
-
 //红外码库二进制文件的路径
 const char *ir_code_lib[] = {
     //格力码库
@@ -81,6 +80,25 @@ const char *ir_code_lib[] = {
     "/spiffs/aokesi/ac_aux_4.bin",
 };
 /*----------------------------------------------空调功能设置----------------------------------------------------------------------*/
+
+int ac_get_temp()
+{
+    return ac_handle.status.ac_temp + 16;
+}
+int ac_get_power()
+{
+    return ac_handle.status.ac_power;
+}
+int ac_get_wind_speed()
+{
+    return ac_handle.status.ac_wind_speed;
+}
+int ac_get_mode()
+{
+    return ac_handle.status.ac_mode;
+}
+
+
 /*
  * 设置空调编码，并保存到nvs
  */
@@ -99,6 +117,52 @@ void ac_control()
     xSemaphoreTake(IR_sem, portMAX_DELAY);
     xTaskNotifyGive(ir_tx_handle);
 }
+int ac_status_config(bool open, int temp, int speed, int mode)
+{
+    //set temp
+    if (temp > 28 || temp < 16)
+    {
+        return -1;
+    }
+    ac_handle.status.ac_temp = temp - 16;
+
+    //set power
+    if (open)
+    {
+        ac_handle.status.ac_power = AC_POWER_ON;
+    }
+    else
+    {
+        ac_handle.status.ac_power = AC_POWER_OFF;
+    }
+
+    //set wind_speed
+    if (speed < 0 || speed > 3)
+    {
+        return -1;
+    }
+    switch (speed)
+    {
+    case 0:
+        ac_handle.status.ac_wind_speed = AC_WS_AUTO;
+        break;
+    case 1:
+        ac_handle.status.ac_wind_speed = AC_WS_LOW;
+        break;
+    case 2:
+        ac_handle.status.ac_wind_speed = AC_WS_MEDIUM;
+        break;
+    case 3:
+        ac_handle.status.ac_wind_speed = AC_WS_HIGH;
+        break;
+    default:
+        return -1;
+    }
+    ac_handle.status.ac_mode = mode;
+
+    ac_control();
+    return 0;
+}
 int ac_set_temp(int temp)
 {
     if (temp > 28 || temp < 16)
@@ -109,7 +173,13 @@ int ac_set_temp(int temp)
     ac_control();
     return 0;
 }
+int ac_set_mode(int mode)
+{
+    ac_handle.status.ac_mode = mode;
 
+    ac_control();
+    return mode;
+}
 int ac_open(bool open)
 {
     if (open)
@@ -359,7 +429,7 @@ static int parse_items(rmt_item32_t *item)
         item++;
     }
     rx_sig.encode = encode;
-    ESP_LOGI(TAG, "encode = %x",rx_sig.encode);
+    ESP_LOGI(TAG, "encode = %x", rx_sig.encode);
     return 0;
 }
 /*----------------------------------------------------硬件初始化-------------------------------------------------*/
@@ -450,7 +520,7 @@ static int ir_code_lib_update()
         break;
     case band_meidi:
 
-        if (rx_sig.lowlevel<5000)
+        if (rx_sig.lowlevel < 5000)
         {
             if (rx_sig.encode == MEIDI_CODE_1)
             {
@@ -544,15 +614,15 @@ void rmt_ir_rxTask(void *agr)
             //!红外线接收器有干扰，需要滤波
             if (rx_size > 30)
             {
-              
+
                 rx_sig.item_num = rx_size / 4; //一个item32bit
 
                 //解析item
                 parse_items(item);
 
-                ir_code_lib_update(); //更新ac_handle
-                rmt_rx_stop(rx_channel);  //暂停接收
-                xSemaphoreGive(IR_sem);   //释放信号量
+                ir_code_lib_update();    //更新ac_handle
+                rmt_rx_stop(rx_channel); //暂停接收
+                xSemaphoreGive(IR_sem);  //释放信号量
             }
 
             //解析出数据后释放ringbuff的空间
@@ -661,6 +731,4 @@ void IR_init()
 
     xTaskCreate(rmt_ir_txTask, "ir_tx", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, &ir_tx_handle);
     xTaskCreate(rmt_ir_rxTask, "ir_rx", IR_RX_TASK_SIZE, NULL, IR_RX_TASK_PRO, NULL);
-
 }
-

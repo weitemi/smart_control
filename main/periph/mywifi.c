@@ -10,6 +10,7 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
+#include "mymqtt.h"
 
 #define EXAMPLE_ESP_WIFI_SSID "esp"
 #define EXAMPLE_ESP_WIFI_PASS "07685812870"
@@ -70,9 +71,11 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
 
+        
         //连接到wifi后 获取全局时钟，更新百度token
-
         update_access_token();
+
+        mqtt_init();
     }
 }
 
