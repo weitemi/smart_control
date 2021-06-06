@@ -1,7 +1,7 @@
 <!--
  * @Author: your name
  * @Date: 2021-03-06 09:55:31
- * @LastEditTime: 2021-06-05 13:10:36
+ * @LastEditTime: 2021-06-06 15:44:00
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\README.md
@@ -69,8 +69,24 @@ http://m.qpic.cn/psc?/V52o58sF1Om7WA2cK9TD1YG4la1SnXbV/45NBuzDIW489QBoVep5mcf7e8
 #### MQTT客户端
 
 使用华为云iot接入
-默认有两个主题，用于华为云控制台与设备端的通信。
-TOPIC_REPORT，TOPIC_ORDER默认订阅。
+
+文档 https://support.huaweicloud.com/api-iothub/iot_06_v5_3010.html
+##### 主题列表
+
+**下发设备命令：**
+$oc/devices/60b9c9383744a602a5cb9bf3_smart_control_01/sys/commands/request_id={request_id}
+
+设备响应：
+$oc/devices/60b9c9383744a602a5cb9bf3_smart_control_01/sys/commands/response/request_id={request_id}
+
+**查询设备属性：**
+$oc/devices/{device_id}/sys/properties/get/request_id={request_id}
+
+设备响应
+$oc/devices/{device_id}/sys/properties/get/response/request_id={request_id}
+
+##### 命令控制
+
 
 可汇报数据：室内温度，空调状态，温度，定时任务？
  - temp:(int)36
@@ -159,7 +175,7 @@ CONFIG_CN_SPEECH_COMMAND_ID41="jiu miao hou da kai kong tiao"
 
 语音识别精度不够
 
-加入mqtt
+
 
 
 

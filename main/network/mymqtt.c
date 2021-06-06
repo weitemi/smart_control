@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-06-04 23:21:35
- * @LastEditTime: 2021-06-05 13:14:53
+ * @LastEditTime: 2021-06-06 15:43:48
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\network\mymqtt.c
@@ -11,32 +11,44 @@
 static const char *TAG = "mqtt client";
 
 static EventGroupHandle_t mqtt_api;
-const int PUBLISH_TEMP = BIT0;
-const int PUBLISH_AC_STATUS = BIT1;
 
-static char mqtt_recv_buff[MQTT_RECV_BUFF_LEN] = {0};
+const int PUBLISH_COMMAND_RESPONSE = BIT0;
+const int PUBLISH_AC_STATUS = BIT1;
+const int PUBLISH_GET_RESPONSE = BIT2;
+
+static char mqtt_recv_buff[MQTT_RECV_BUFF_LEN] = {0};   //mqtt数据接收buff
+static char topic_response[MQTT_RESPONSE_TOPIC_LEN] = {0};  //响应消息的主题
 
 void mqtt_User_task(void *agr);
 void mqtt_recv_handler(enum topic_type topic);
+void mqtt_response(enum topic_type type, char *request_id);
 /*
  * @brief mqtt事件回调函数
  *
  */
+
+const char *str_get_real_temp = "get_real_temp";
+const char *str_ac_control = "ac_control";
+static const char *device_id = "60b9c9383744a602a5cb9bf3_smart_control_01";
+
 static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 {
     esp_mqtt_client_handle_t client = event->client;
     int msg_id = -1;
-    static int total_recv = 0;
-    char *recv_buff =(char *) event->user_context;
+    static int total_recv = 0, request_id_len = 0;
+    char *t;
+    char request_id[48] = {0}; //存放request_id
+    char *recv_buff = (char *)event->user_context;
+    enum topic_type type = TOPIC_MAX;
     switch (event->event_id)
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
         //连接成功，发布一个无负载的消息
-        msg_id = esp_mqtt_client_publish(client, TOPIC_REPORT, "data", 0, 1, 0);
+        msg_id = esp_mqtt_client_publish(client, TOPIC_REPORT, NULL, 0, 1, 0);
         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
         //订阅主题
-        msg_id = esp_mqtt_client_subscribe(client, TOPIC_TEMP, 0);
+        //msg_id = esp_mqtt_client_subscribe(client, TOPIC_TEMP, 0);
 
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
@@ -57,31 +69,49 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_DATA:
+
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+        printf("DATA=%.*s\r\n", event->data_len, event->data);
         //MQTT接收到消息
-        if (event->topic_len > 20)
+        t = strstr(event->topic, "request_id");
+        if (t)
         {
-            ESP_LOGI(TAG, "recv from console,total=%d,data_offset=%d,data_len=%d", event->total_data_len, event->current_data_offset, event->data_len);
-            if (event->total_data_len > 1024)
-            {
-                ESP_LOGI(TAG, "recv buffer too small");
-            }
-            else
-            {
-                strncpy(recv_buff+event->current_data_offset, event->data, event->data_len);
-                total_recv += event->data_len;
-            }
-            if (total_recv == event->total_data_len)
-            {
-                total_recv = 0; //接收完成
-                //数据处理
-                mqtt_recv_handler(CONSOLE_ORDER);
-            }
+            strncpy(request_id, t, 47);
+            request_id[47] = '\0';
+        }
+        ESP_LOGI(TAG, "%s", request_id);
+
+        if (strstr(event->topic, "/commands/"))
+        {
+            //下发设备命令：
+            type = MQTT_COMMAND;
+        }
+        else if (strstr(event->topic, "/properties/get/"))
+        {
+            //查询设备属性：
+            type = MQTT_CHECK;
+        }
+        //recv data
+        if (event->total_data_len > 1024)
+        {
+            ESP_LOGI(TAG, "recv buffer too small");
         }
         else
         {
-            //todo 用户的topic
+            strncpy(recv_buff + event->current_data_offset, event->data, event->data_len);
+            total_recv += event->data_len;
         }
+        if (total_recv == event->total_data_len)
+        {
+            total_recv = 0; //接收完成
+            //数据处理
+            mqtt_recv_handler(type);
+
+            //回复broker
+            mqtt_response(type, request_id);
+        }
+
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
@@ -100,53 +130,87 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 }
 
 /*
- * @brief mqtt接收数据处理
+ * @brief mqtt接收数据处理.
+ * topic_type：由回调函数解析出来的topic类型
+ * mqtt数据缓存在mqtt_recv_buff[]中。
  */
 void mqtt_recv_handler(enum topic_type topic)
 {
-    //来自华为云控制台的控制消息
-    if (topic == CONSOLE_ORDER)
+    //控制命令消息
+    if (topic == MQTT_COMMAND)
     {
-        //目前两种消息类型如下
+        //控制台命令消息类型如下
         /* {"paras":{"ac_power":1,"ac_temp":27,"ac_wind_speed":2,"ac_mode":0},"service_id":"ac_control","command_name":"ac_control"}*/
-        /* {"paras":{"temp":1},"service_id":"get_temp","command_name":"get_temp"} */
-        //ESP_LOGI(TAG, "%s", mqtt_recv_buff);
         cJSON *root = cJSON_Parse(mqtt_recv_buff);
-    
         if (root != NULL)
         {
             cJSON *paras = cJSON_GetObjectItem(root, "paras");
             cJSON *services_id = cJSON_GetObjectItem(root, "service_id");
-            char *id = cJSON_GetStringValue(services_id);
-            ESP_LOGI(TAG, "service : %s", id);
-            if (strncmp(GET_TEMP_SERVICE_ID, id, GET_TEMP_SERVICE_ID_LEN) == 0)
+            char *str = cJSON_GetStringValue(services_id);
+            ESP_LOGI(TAG, "service:%s", str);
+
+            //service 正确
+            if (strncmp(str_ac_control, str, strlen(str_ac_control)) == 0)
             {
-                cJSON *element = cJSON_GetObjectItem(paras, "temp");
-                //ESP_LOGI(TAG, "get temp:%d", element->valueint);
-                mqtt_publish_temp();
+                cJSON *command_name = cJSON_GetObjectItem(root, "command_name");
+                str = cJSON_GetStringValue(command_name);
+                ESP_LOGI(TAG, "command_name:%s", str);
+                //ac_control命令
+                if (strncmp(str_ac_control, str, strlen(str_ac_control)) == 0)
+                {
+                    cJSON *power = cJSON_GetObjectItem(paras, "ac_power");
 
-            }
-            else if (strncmp(AC_CONTROL_SERVICE_ID, id, AC_CONTROL_SERVICE_ID_LEN) == 0)
-            {
-                cJSON *power = cJSON_GetObjectItem(paras, "ac_power");
+                    cJSON *temp = cJSON_GetObjectItem(paras, "ac_temp");
 
-                cJSON *temp = cJSON_GetObjectItem(paras, "ac_temp");
-   
-                cJSON *wind_speed = cJSON_GetObjectItem(paras, "ac_wind_speed");
-       
-                cJSON *mode = cJSON_GetObjectItem(paras, "ac_mode");
+                    cJSON *wind_speed = cJSON_GetObjectItem(paras, "ac_wind_speed");
 
-                //设置空调
-                ac_status_config(power->valueint, temp->valueint, wind_speed->valueint, mode->valueint);
+                    cJSON *mode = cJSON_GetObjectItem(paras, "ac_mode");
+
+                    //设置空调
+                    ac_status_config(power->valueint, temp->valueint, wind_speed->valueint, mode->valueint);
+
+                    
+                }
+
             }
 
             cJSON_Delete(root);
         }
-        //清空buff，准备接收下次数据
-        memset(mqtt_recv_buff, 0, MQTT_RECV_BUFF_LEN);
-        
     }
+    else if (topic == MQTT_CHECK)
+    {
+        //控制台查询属性命令 其数据不需要处理
+        /* {"service_id":"ac_control"} */
+        ESP_LOGI(TAG, "%s", mqtt_recv_buff);
+    }
+    //清空buff，准备接收下次数据
+    memset(mqtt_recv_buff, 0, MQTT_RECV_BUFF_LEN);
 }
+/*
+ * @breif 组装 设备端响应主题，并同步用户线程
+ * 该API通过事件组标志与mqtt任务通信，不会长时间阻塞
+ */
+void mqtt_response(enum topic_type type, char *request_id)
+{
+    memset(topic_response, 0, MQTT_RESPONSE_TOPIC_LEN);
+    //组件topic
+    switch (type)
+    {
+    case MQTT_COMMAND:
+        sprintf(topic_response, "$oc/devices/%s/sys/commands/response/%s", device_id, request_id);
+        xEventGroupSetBits(mqtt_api, PUBLISH_COMMAND_RESPONSE);
+        break;
+    case MQTT_CHECK:
+        sprintf(topic_response, "$oc/devices/%s/sys/properties/get/response/%s", device_id, request_id);
+        xEventGroupSetBits(mqtt_api, PUBLISH_GET_RESPONSE);
+        break;
+    default:
+        break;
+    }
+
+    ESP_LOGI(TAG, "response topic:%s", topic_response);
+}
+
 /*
  * @brief mqtt初始化 开启mqtt客户端，连接到华为云
  *
@@ -161,7 +225,7 @@ void mqtt_init()
         .password = PSW,
         .client_id = CLIENT_ID,
         .username = USER_NAME,
-        .user_context=(void *)mqtt_recv_buff,
+        .user_context = (void *)mqtt_recv_buff,
 
     };
     //wifi disconnect return
@@ -171,7 +235,7 @@ void mqtt_init()
     }
     //提供其他task的调用接口
     mqtt_api = xEventGroupCreate();
-    xEventGroupClearBits(mqtt_api, PUBLISH_TEMP | PUBLISH_AC_STATUS);
+    xEventGroupClearBits(mqtt_api, PUBLISH_COMMAND_RESPONSE | PUBLISH_AC_STATUS | PUBLISH_GET_RESPONSE);
 
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     //注册回调函数
@@ -181,14 +245,9 @@ void mqtt_init()
     xTaskCreate(mqtt_User_task, "mqtttask", 3 * 1024, client, 5, NULL);
 }
 
-/*
- * @breif mqtt客户端发布 温度消息
- * 该API通过事件组标志与mqtt任务通信，不会长时间阻塞
- */
-void mqtt_publish_temp()
-{
-    xEventGroupSetBits(mqtt_api, PUBLISH_TEMP);
-}
+
+
+
 
 /*
  * @breif mqtt客户端发布 空调消息
@@ -209,50 +268,24 @@ void mqtt_User_task(void *agr)
     esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t)agr;
     while (1)
     {
-        int bit = xEventGroupWaitBits(mqtt_api, PUBLISH_TEMP, pdTRUE, pdFAIL, 100 / portTICK_RATE_MS);
-        xEventGroupClearBits(mqtt_api, PUBLISH_AC_STATUS | PUBLISH_TEMP); //还是要清除一下
-        
-        if (bit & PUBLISH_TEMP)
-        {
-            cJSON *temp = cJSON_CreateNumber(ds18b20_get_data());
+        int bit = xEventGroupWaitBits(mqtt_api, PUBLISH_COMMAND_RESPONSE | PUBLISH_AC_STATUS | PUBLISH_GET_RESPONSE, pdTRUE, pdFAIL, 100 / portTICK_RATE_MS);
+        xEventGroupClearBits(mqtt_api, PUBLISH_AC_STATUS); //还是要清除一下
 
-            cJSON *properties = cJSON_CreateObject();
-
-            cJSON *service_id = cJSON_CreateString("get_temp");
-
-            cJSON_AddItemToObject(properties, "temp", temp);
-
-            cJSON *json = cJSON_CreateObject();
-
-            cJSON_AddItemToObject(json, "service_id", service_id);
-            cJSON_AddItemToObject(json, "properties", properties);
-
-            cJSON *services = cJSON_CreateArray();
-            cJSON_AddItemToArray(services, json);
-
-            cJSON *root = cJSON_CreateObject();
-            cJSON_AddItemToObject(root, "services", services);
-            res = cJSON_Print(root);
-
-            msg_id = esp_mqtt_client_publish(client, TOPIC_REPORT, res, strlen(res), 1, 0);
-
-            cJSON_Delete(root);
-
-            free(res);
-        }
-        if (bit & PUBLISH_AC_STATUS)
+        if ((bit & PUBLISH_AC_STATUS) || (bit & PUBLISH_GET_RESPONSE))
         {
             //创建属性
             cJSON *temp = cJSON_CreateNumber(ac_get_temp());
             cJSON *power = cJSON_CreateNumber(ac_get_power());
             cJSON *mode = cJSON_CreateNumber(ac_get_mode());
             cJSON *wind_speed = cJSON_CreateNumber(ac_get_wind_speed());
+            cJSON *real_temp = cJSON_CreateNumber(ds18b20_get_data());
 
             cJSON *properties = cJSON_CreateObject();
             cJSON_AddItemToObject(properties, "ac_temp", temp);
             cJSON_AddItemToObject(properties, "ac_power", power);
             cJSON_AddItemToObject(properties, "ac_mode", mode);
             cJSON_AddItemToObject(properties, "ac_wind_speed", wind_speed);
+            cJSON_AddItemToObject(properties, "real_temp", real_temp);
 
             //确定服务id
             cJSON *service_id = cJSON_CreateString("ac_control");
@@ -270,11 +303,35 @@ void mqtt_User_task(void *agr)
             cJSON_AddItemToObject(root, "services", services);
             res = cJSON_Print(root);
 
-            msg_id = esp_mqtt_client_publish(client, TOPIC_REPORT, res, strlen(res), 1, 0);
+            if (bit & PUBLISH_GET_RESPONSE)
+            {
+                msg_id = esp_mqtt_client_publish(client, topic_response, res, strlen(res), 1, 0);
+            }
+            else
+            {
+                msg_id = esp_mqtt_client_publish(client, TOPIC_REPORT, res, strlen(res), 1, 0);
+            }
+
+            ESP_LOGI(TAG, "mqtt publish ac_status msg_id=%d", msg_id);
 
             cJSON_Delete(root);
 
-            free(res);
+           
+        }
+        if (bit & PUBLISH_COMMAND_RESPONSE)
+        {
+            //发送成功响应
+            cJSON *result = cJSON_CreateString("success");
+            cJSON *paras = cJSON_CreateObject();
+            cJSON_AddItemToObject(paras, "result", result);
+            cJSON *root = cJSON_CreateObject();
+            cJSON_AddItemToObject(root, "paras", paras);
+            char *res = cJSON_Print(root);
+
+            msg_id = esp_mqtt_client_publish(client, topic_response, res, strlen(res), 1, 0);
+            ESP_LOGI(TAG, "mqtt response borker msg_id=%d", msg_id);
+
+            cJSON_Delete(root);
         }
     }
 }

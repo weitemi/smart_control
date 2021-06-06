@@ -13,7 +13,7 @@
 #define HAIER_CODE_3 0x8565
 #define HAIER_CODE_5 0x73565
 
-static const char *TAG = "IR_task";
+static const char *TAG = "IR_";
 
 static const int rx_channel = RMT_RX_CHANNEL;
 static const int tx_channel = RMT_TX_CHANNEL;
@@ -158,7 +158,7 @@ int ac_status_config(bool open, int temp, int speed, int mode)
     default:
         return -1;
     }
-    ac_handle.status.ac_mode = mode;
+    //ac_handle.status.ac_mode = mode;
 
     ac_control();
     return 0;

@@ -49,7 +49,7 @@ void button_task(void *arg)
             else if ((int)msg.data == KEY1)
             {
                 //ble_open();
-                mqtt_publish_temp();
+               
             }
         }
     }
