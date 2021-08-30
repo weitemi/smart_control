@@ -127,7 +127,7 @@ void app_main()
     player_init();
 
     wifi_init_sta();
-    //ble_init();
+    ble_init();
     http_init();
 
     clk_init();
