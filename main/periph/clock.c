@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-12-19 16:48:59
- * @LastEditTime: 2021-06-04 08:32:40
+ * @LastEditTime: 2021-08-31 23:54:49
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adfd:\MyNote\clk_t\clk_t.c
@@ -428,7 +428,7 @@ void clk_task()
 	//初始化时间
 	while (get_current_nettime(&t) != ESP_OK)
 	{
-		vTaskDelay(100 / portTICK_RATE_MS);
+		vTaskDelay(1000 / portTICK_RATE_MS);
 	}
 
 	//get the time ok

@@ -2,7 +2,7 @@
 
  * @Author: your name
  * @Date: 2021-03-06 09:55:31
- * @LastEditTime: 2021-06-06 15:44:00
+ * @LastEditTime: 2021-09-01 00:18:20
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\README.md
@@ -18,9 +18,21 @@
 >
 > main：用户代码
 >
+> > audio:音频代码
+> >
+> > ir_decoder:红外码库代码
+> >
+> > network:网络、蓝牙相关代码
+> >
+> > periph:外设驱动代码
+>
 > picture：图片
 >
 > tools：使用到的工具
+>
+> > mp3:MP3离线音频
+> >
+> > spiffs：文件系统，存放二进制码库
 >
 > partitions.csv：分区表
 
@@ -259,6 +271,7 @@ CONFIG_CN_SPEECH_COMMAND_ID41="jiu miao hou da kai kong tiao"
 
 - 离线语音识别精度问题
 - wifi检测不准确
+- 需要一个网络管理任务，处理wifi、蓝牙连接状态改变时，对其他任务的影响
 
 
 

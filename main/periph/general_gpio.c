@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-10-25 15:01:11
- * @LastEditTime: 2021-06-05 10:07:29
+ * @LastEditTime: 2021-09-01 00:07:29
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\periph\buttonTask.c
@@ -49,7 +49,8 @@ void button_task(void *arg)
             else if ((int)msg.data == KEY1)
             {
                 //ble_open();
-               
+                t.value = get_clk_value();
+                ESP_LOGI(TAG, "now time %d",t.cal.second);
             }
         }
     }
