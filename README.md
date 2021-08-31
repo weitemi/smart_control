@@ -12,7 +12,17 @@
 
 本项目基于esp32a1s模组，设计了一个遥控器，除了实现基本的红外遥控功能，还利用ESP32芯片具备的AI能力，WIFI及蓝牙功能，实现多种方式的输入输出控制，使人们能通过语音，手机远程进行红外遥控。同时又加入温度传感器，并支持将温度数据上传云端，使人们能随时随地查看、分析数据。
 
+## 仓库目录
 
+> doc:说明文档
+>
+> main：用户代码
+>
+> picture：图片
+>
+> tools：使用到的工具
+>
+> partitions.csv：分区表
 
 ### 一、程序框架
 
@@ -161,7 +171,7 @@ $
 
 使用华为云iot接入
 
-文档 https://support.huaweicloud.com/api-iothub/iot_06_v5_3010.html
+参考文档 https://support.huaweicloud.com/api-iothub/iot_06_v5_3010.html
 ##### 主题列表
 
 **下发设备命令：**
@@ -245,26 +255,10 @@ CONFIG_CN_SPEECH_COMMAND_ID40="shi miao hou guan bi kong tiao"
 CONFIG_CN_SPEECH_COMMAND_ID41="jiu miao hou da kai kong tiao"
 
 
-
-### 五、仓库目录
-
-> doc:说明文档
->
-> main：用户代码
->
-> picture：图片
->
-> tools：使用到的工具
->
-> partitions.csv：分区表
-
-
-
-
-
 ## 目前的问题
 
-语音识别精度不够，wifi检测不准确
+- 离线语音识别精度问题
+- wifi检测不准确
 
 
 
