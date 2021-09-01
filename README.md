@@ -2,13 +2,13 @@
 
  * @Author: your name
  * @Date: 2021-03-06 09:55:31
- * @LastEditTime: 2021-09-01 00:18:20
+ * @LastEditTime: 2021-09-01 22:24:45
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\README.md
 -->
 
-## 智能遥控器（离线版）
+## 智能遥控器（在线版）
 
 本项目基于esp32a1s模组，设计了一个遥控器，除了实现基本的红外遥控功能，还利用ESP32芯片具备的AI能力，WIFI及蓝牙功能，实现多种方式的输入输出控制，使人们能通过语音，手机远程进行红外遥控。同时又加入温度传感器，并支持将温度数据上传云端，使人们能随时随地查看、分析数据。
 
@@ -33,6 +33,7 @@
 > > mp3:MP3离线音频
 > >
 > > spiffs：文件系统，存放二进制码库
+> > etymology_anallyze：百度词法分析定制文件
 >
 > partitions.csv：分区表
 

@@ -1,7 +1,7 @@
 <!--
  * @Author: your name
  * @Date: 2021-03-06 12:29:43
- * @LastEditTime: 2021-08-30 23:32:11
+ * @LastEditTime: 2021-09-01 22:24:04
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \myapp\off_asr\tools\readme.md
@@ -34,3 +34,6 @@ python spiffsgen.py 0x19000 binfile spiffs.bin
 
 ```
 将spiffs.bin依照partitions.csv中的地址烧录到芯片flash
+
+### etymology_analyze
+百度词法解析定制配置文件
