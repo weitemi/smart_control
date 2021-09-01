@@ -166,6 +166,8 @@ int ac_order(enum AC_Option opt,int temp)
     //返回温度数据
     return 1;
 }
+//-1:无效；可表示今天、明天、后天；数字
+static int number;
 /*
  * 组装一个语音命令
  * i:命令中的单词数量
@@ -179,6 +181,7 @@ Audio_Order build_order(int i)
         .object=obj_other,
         .option=AC_OTHER
     };
+    ord.number = number;
     //遍历单词，提取对命令有关的信息
     for (int x = 0; x < i; x++)
     {
@@ -207,11 +210,11 @@ Audio_Order build_order(int i)
                 ord.option = AC_DOWN;
                 break;
             case Num:
-                ord.number = atoi(ety_eles[x].text);//字符串数字转整型数字
+                //ord.number = atoi(ety_eles[x].text);//字符串数字转整型数字
                 //printf("num=%d\r\n", ord.number);
                 break;
             case Mount:
-                ord.number = atoi(ety_eles[x].text);
+                //ord.number = atoi(ety_eles[x].text);
                 //printf("num=%d\r\n", ord.number);
                 
             case TIME:
@@ -237,7 +240,6 @@ Audio_Order build_order(int i)
    
     return ord;
 }
-static int number;
 /*
  * 解析每个单词的词性
  * 返回：单词数量
@@ -397,7 +399,8 @@ int Etymology_Analysis()
         }
         p++;
     }
-    number = atoi(num_str);
+    if(num_str[0]!=0)number = atoi(num_str);
+    ESP_LOGI(TAG, "number=:%d", number);   
 
     //将文本添加进json字符串
     char *post_data = malloc(POST_DATA_LEN);
