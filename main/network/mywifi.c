@@ -138,7 +138,7 @@ int wifi_update(const char *ssid,const char *password)
     strncpy((char *)wifi_config.sta.ssid, ssid, strlen(ssid));
     strncpy((char *)wifi_config.sta.password, password, strlen(password));
 
-    ESP_LOGI(TAG, "update wifi ssid:%s  password:%s", wifi_config.sta.ssid, wifi_config.sta.password);
+    ESP_LOGI(TAG, "wifi ssid:%s  password:%s", wifi_config.sta.ssid, wifi_config.sta.password);
     //若wifi已连接则先断开
     if (get_wifi_status())
     {
