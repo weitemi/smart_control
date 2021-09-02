@@ -43,7 +43,7 @@ int _http_stream_event_handle(http_stream_event_msg_t *msg)
         case HTTP_STREAM_PRE_REQUEST:
 
             //准备请求百度文字转语音的音频
-            ESP_LOGI(TAG, "HTTP_STREAM_PRE_REQUEST");
+            //ESP_LOGI(TAG, "HTTP_STREAM_PRE_REQUEST");
             //检查token
             if (baidu_access_token == NULL) {
                 // Must freed `baidu_access_token` after used 获得token
@@ -63,25 +63,25 @@ int _http_stream_event_handle(http_stream_event_msg_t *msg)
             break;
 
         case HTTP_STREAM_ON_REQUEST:
-            ESP_LOGI(TAG, "HTTP_STREAM_ON_REQUEST");
+            //ESP_LOGI(TAG, "HTTP_STREAM_ON_REQUEST");
             break;
         case HTTP_STREAM_ON_RESPONSE:
-            ESP_LOGI(TAG, "HTTP_STREAM_ON_RESPONSE");
+            //ESP_LOGI(TAG, "HTTP_STREAM_ON_RESPONSE");
             break;
         case HTTP_STREAM_POST_REQUEST:
-            ESP_LOGI(TAG, "HTTP_STREAM_POST_REQUEST");
+            //ESP_LOGI(TAG, "HTTP_STREAM_POST_REQUEST");
             break;
         case HTTP_STREAM_FINISH_REQUEST:
-            ESP_LOGI(TAG, "HTTP_STREAM_FINISH_REQUEST");
+            //ESP_LOGI(TAG, "HTTP_STREAM_FINISH_REQUEST");
             break;    
         case HTTP_STREAM_RESOLVE_ALL_TRACKS:
-            ESP_LOGI(TAG, "HTTP_STREAM_RESOLVE_ALL_TRACKS");
+            //ESP_LOGI(TAG, "HTTP_STREAM_RESOLVE_ALL_TRACKS");
             break;
         case HTTP_STREAM_FINISH_TRACK:
-            ESP_LOGI(TAG, "HTTP_STREAM_FINISH_TRACK");
+            //ESP_LOGI(TAG, "HTTP_STREAM_FINISH_TRACK");
             break;
         case HTTP_STREAM_FINISH_PLAYLIST:
-            ESP_LOGI(TAG, "HTTP_STREAM_FINISH_PLAYLIST");
+            //ESP_LOGI(TAG, "HTTP_STREAM_FINISH_PLAYLIST");
             break;        
     }
     return ESP_OK;
@@ -143,12 +143,12 @@ int player_init()
     audio_element_handle_t i2s_stream_writer = i2s_stream_init(&i2s_writer);    //创建i2s流
     esp_audio_output_stream_add(player, i2s_stream_writer); //i2s writer添加到player的输出源
 
-    ESP_LOGI(TAG, "http_stream_reader->mp3decode->player->i2s->ac101");
-    ESP_LOGI(TAG, "flash_stream_reader->mp3decode->player->i2s->ac101");
+    //ESP_LOGI(TAG, "http_stream_reader->mp3decode->player->i2s->ac101");
+    //ESP_LOGI(TAG, "flash_stream_reader->mp3decode->player->i2s->ac101");
 
     esp_audio_vol_set(player, 80);  //设置player的音量
 
-    ESP_LOGI(TAG, "Esp_audio instance is:%p\r\n", player);
+    ESP_LOGI(TAG, "Player Init OK");
     return ESP_OK;
 }
 

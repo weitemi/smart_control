@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-10-25 15:01:11
- * @LastEditTime: 2021-09-02 11:20:03
+ * @LastEditTime: 2021-09-02 23:56:41
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\periph\buttonTask.c
@@ -95,6 +95,6 @@ int General_Gpio_init(esp_periph_set_handle_t set)
     xTaskCreate(button_task, "btn", BUTTON_TASK_SIZE, NULL, BUTTON_TASK_PRO, NULL);
     
     LED_OFF; 
-    
+    ESP_LOGI(TAG, "GPIO Init OK");
     return ESP_OK;
 }

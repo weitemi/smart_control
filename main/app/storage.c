@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-06-03 19:12:02
- * @LastEditTime: 2021-09-02 11:32:39
+ * @LastEditTime: 2021-09-02 23:58:24
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\periph\storage.c
@@ -293,7 +293,7 @@ int storage_init()
     }
     else
     {
-        ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
+        ESP_LOGI(TAG, "Storage Init OK,Partition size: total: %d, used: %d", total, used);
     }
 
     return 1;

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-12-19 16:48:59
- * @LastEditTime: 2021-09-02 20:22:30
+ * @LastEditTime: 2021-09-02 23:57:45
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adfd:\MyNote\clk_t\clk_t.c
@@ -438,7 +438,7 @@ void clk_task()
 
 	t.cal.date += 1;
 	tmr_new(&t, update_global_cb, NULL, "UPDATE");
-
+	ESP_LOGI(TAG, "Clock Init OK");
 	while (1)
 	{
 		//等待用户调用

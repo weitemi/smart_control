@@ -824,4 +824,6 @@ void IR_init()
 
     xTaskCreate(rmt_ir_txTask, "ir_tx", IR_TX_TASK_SIZE, NULL, IR_TX_TASK_PRO, &ir_tx_handle);
     xTaskCreate(rmt_ir_rxTask, "ir_rx", IR_RX_TASK_SIZE, NULL, IR_RX_TASK_PRO, NULL);
+
+    ESP_LOGI(TAG, "IR Init OK");
 }

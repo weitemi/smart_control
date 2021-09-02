@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-06-04 23:21:35
- * @LastEditTime: 2021-07-31 10:54:41
+ * @LastEditTime: 2021-09-02 23:56:18
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\network\mymqtt.c
@@ -250,6 +250,7 @@ void mqtt_init()
     esp_mqtt_client_start(client);
 
     xTaskCreate(mqtt_User_task, "mqtttask", 3 * 1024, client, 5, NULL);
+    ESP_LOGI(TAG, "MQTT Client Init OK");
 }
 
 

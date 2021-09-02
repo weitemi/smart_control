@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-24 23:48:27
- * @LastEditTime: 2021-09-02 23:35:59
+ * @LastEditTime: 2021-09-02 23:55:14
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\network\myble.c
@@ -369,8 +369,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             esp_log_buffer_hex(TAG, param->write.value, param->write.len);
             wifiservice_handle(gatts_if, param);
 
-            printf("\n this \n");
-
             /* send response when param->write.need_rsp is true*/
             if (param->write.need_rsp)
             {
@@ -453,8 +451,9 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
 //service处理
 void wifiservice_handle(esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
-    char ssid[32] = {0};
-    char pswd[64] = {0};
+    //必须设置静态
+    static char ssid[32] = {0};
+    static char pswd[64] = {0};
     ESP_LOGI(TAG, "WIFI Service Table");
 
     if (wifi_handle_table[IDX_CHAR_VAL_SSID] == param->write.handle)
@@ -508,6 +507,8 @@ void ble_init(void)
     esp_ble_gap_register_callback(gap_event_handler);
     ret = esp_ble_gatts_app_register(ESP_APP_ID);
     ret = esp_ble_gatt_set_local_mtu(500);
+
+    ESP_LOGI(TAG, "BLE Init OK");
 }
 
 /*

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-24 08:40:13
- * @LastEditTime: 2021-09-02 11:34:30
+ * @LastEditTime: 2021-09-02 23:59:14
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\periph\myuart.c
@@ -11,7 +11,7 @@
 #include "mywifi.h"
 
 const int RX_BUF_SIZE = 1024;
-const char *RX_TASK_TAG = "UART_RX";
+const char *TAG = "myuart";
 /*
  * 串口接收任务 接收控制台数据
  */
@@ -28,14 +28,14 @@ void rx_task()
         {
 
             data[rxBytes] = 0;
-            ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
+            ESP_LOGI(TAG, "Read %d bytes: '%s'", rxBytes, data);
             //读取ssid
             if (data[0] == '#')
             {
        
                 strncpy(ssid, (char *)&data[1], rxBytes - 1);
                 ssid[rxBytes-1] = 0;
-                ESP_LOGI(RX_TASK_TAG, "get ssid : %s", ssid);
+                ESP_LOGI(TAG, "get ssid : %s", ssid);
             }
 
             //读取密码
@@ -45,7 +45,7 @@ void rx_task()
             
                 strncpy(password, (char *)&data[1], rxBytes - 1);
                 password[rxBytes-1] = 0;
-                ESP_LOGI(RX_TASK_TAG, "get password : %s", password);
+                ESP_LOGI(TAG, "get password : %s", password);
             }
 
             //确认修改wifi
@@ -66,7 +66,7 @@ void rx_task()
 int uart_init()
 {
     esp_err_t err;
-    esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
+    esp_log_level_set(TAG, ESP_LOG_INFO);
     
     const uart_config_t uart_config = {
         .baud_rate = 115200,
@@ -80,6 +80,7 @@ int uart_init()
     err = uart_driver_install(UART_NUM_0, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
 
     xTaskCreate(rx_task, "uart_rx", 2048, NULL, 3, NULL);
+    ESP_LOGI(TAG, "Uart Init OK");
     return err;
 }
 

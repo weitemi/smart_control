@@ -325,5 +325,5 @@ void http_init()
     res_queue = xQueueCreate(1, sizeof(int));
     http_api_evengroup = xEventGroupCreate();                             //创建api事件组，用于各种api请求的同步
     xTaskCreate(http_api_task, "http_api_task", 2048 * 2, NULL, 5, NULL); //创建http请求任务
-
+    ESP_LOGI(TAG, "Http Init OK");
 }
