@@ -1,13 +1,12 @@
 /*
  * @Author: your name
  * @Date: 2021-09-02 10:13:47
- * @LastEditTime: 2021-09-02 10:54:12
+ * @LastEditTime: 2021-09-02 14:59:56
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \smart_control\main\app\etymology.c
  */
 #include "etymology.h"
-
 
 static int do_object(char *p)
 {
@@ -43,7 +42,7 @@ static int do_action(char *p)
 static time_tt do_time(char *p)
 {
 	time_tt t;
-	
+
 	if (strstr(p, "明天"))
 	{
 		t.day = 1;
@@ -100,12 +99,36 @@ static time_tt do_time(char *p)
 	}
 	return t;
 }
+//读取温度数值
+static int do_number(char *string)
+{
+	//?获取文本中的数字
+	char *p = strstr(string, "度");
+	if (p)
+	{
+		char num_str[5] = {0};
+		char *w = num_str;
+		while (*p != '\0')
+		{
+			if (*p > 47 && *p < 58 && w < w + 5)
+			{
+				*w = *p;
+				w++;
+			}
+			p++;
+		}
+		if (num_str[0] != 0)
+			return atoi(num_str);
+	}
+
+	return -1;
+}
 order_t etymology(char *s)
 {
-    order_t ord;
-    ord.obj = do_object(s);
-    ord.action = do_action(s);
-    ord.time = do_time(s);
-
-    return ord;
+	order_t ord;
+	ord.obj = do_object(s);
+	ord.action = do_action(s);
+	ord.time = do_time(s);
+	ord.number = do_number(s);
+	return ord;
 }

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-24 23:48:44
- * @LastEditTime: 2021-03-26 09:15:19
+ * @LastEditTime: 2021-09-02 15:13:53
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\network\myble.h
@@ -55,6 +55,7 @@ enum
 //extern void modify_wificonfig_ssid(const char* pswd);
 //extern void modify_wificonfig_pswd(const char* pswd);
 
+//todo 使操作线程安全
 void ble_init(void);
 int ble_close();
 int ble_open();

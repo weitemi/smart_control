@@ -89,7 +89,7 @@ int update_access_token()
 }
 /*
  * 获取天气数据字符串 
- * day:0,今天 1,明天,2后天
+ * day:1,今天 2,明天,3后天
  * 返回：天气数据字符串指针
  */
 static char str_weather[3][100] = {0}; //存放天气字符串
@@ -97,7 +97,7 @@ char *get_Weather_String(int day)
 {
     int msg = 0;
     //检查day
-    if (day < 0 || day > 2)
+    if (day < 1 || day > 3)
     {
         return NULL;
     }
@@ -109,7 +109,7 @@ char *get_Weather_String(int day)
     xQueueReceive(res_queue, &msg, portMAX_DELAY);
     if (msg==ESP_OK)
     {
-        return &str_weather[day][0];
+        return &str_weather[day-1][0];
     }
 
     return NULL;
