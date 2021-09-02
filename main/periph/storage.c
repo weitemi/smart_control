@@ -1,13 +1,16 @@
 /*
  * @Author: your name
  * @Date: 2021-06-03 19:12:02
- * @LastEditTime: 2021-06-03 23:53:34
+ * @LastEditTime: 2021-09-02 11:32:39
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\periph\storage.c
  */
 
 #include "storage.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "esp_spiffs.h"
 
 static const char *TAG = "STORAGE";
 

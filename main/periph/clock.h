@@ -1,7 +1,7 @@
 /*
  * @Author: prx
  * @Date: 2020-12-19 16:48:34
- * @LastEditTime: 2021-06-04 08:22:45
+ * @LastEditTime: 2021-09-02 11:13:39
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adfd:\MyNote\clk_t\clk_t.h
@@ -9,10 +9,8 @@
 #ifndef _CLOCK_H
 #define _CLOCK_H
 
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
-#include "mywifi.h"
+#include "main.h"
+
 
 #define CLK_TASK_SIZE 2048
 #define CLK_TASK_PRO 5

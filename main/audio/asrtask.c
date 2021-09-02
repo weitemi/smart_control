@@ -4,6 +4,19 @@
 #include "myhttp.h"
 #include "ir.h"
 #include "player.h"
+#include "etymology.h"
+#include "audio_pipeline.h"
+#include "esp_system.h"
+#include "esp_wn_iface.h"
+#include "esp_wn_models.h"
+#include "i2s_stream.h"
+#include "raw_stream.h"
+#include "tone_stream.h"
+#include "audio_tone_uri.h"
+#include "mp3_decoder.h"
+#include "filter_resample.h"
+#include "rec_eng_helper.h"
+#include "esp_vad.h"
 
 #define USE_ETY 1
 #define VAD_SAMPLE_RATE_HZ 16000
@@ -148,7 +161,7 @@ int ac_order(enum AC_Option opt,int temp)
     }
 
     //限制温度值
-    if(temp<AC_TEMP_16||temp>AC_TEMP_30)
+    if(temp<16||temp>30)
     {
         ESP_LOGI(TAG, "temp err");
         return 0;

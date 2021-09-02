@@ -1,18 +1,18 @@
 /*
  * @Author: your name
  * @Date: 2020-12-19 16:48:59
- * @LastEditTime: 2021-08-31 23:54:49
+ * @LastEditTime: 2021-09-02 11:18:20
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adfd:\MyNote\clk_t\clk_t.c
  */
 #include "clock.h"
+#include "mywifi.h"
 #include "myhttp.h"
-#include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
 
-static const char *TAG = "CLOCK";
+
+
+static const char *TAG = "clock.c";
 
 const int UPDATE_CLK = BIT0;
 const int NEW_TIMER = BIT1;

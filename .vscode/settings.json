@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "asrtask.h": "c"
+        "asrtask.h": "c",
+        "mywifi.h": "c",
+        "storage.h": "c",
+        "audio_tone_uri.h": "c"
     }
 }

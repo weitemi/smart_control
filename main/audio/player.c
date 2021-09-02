@@ -1,5 +1,15 @@
 #include "player.h"
 #include "myhttp.h"
+#include "mywifi.h"
+#include "esp_http_client.h"
+#include "esp_audio.h"
+#include "audio_pipeline.h"
+#include "i2s_stream.h"
+#include "http_stream.h"
+#include "tone_stream.h"
+#include "mp3_decoder.h"
+#include "filter_resample.h"
+
 #define BAIDU_TTS_URL "http://tsn.baidu.com/text2audio"
 static const char *TAG = "PLAYER";
 

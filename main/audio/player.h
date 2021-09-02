@@ -1,31 +1,14 @@
 /*
  * @Author: your name
  * @Date: 2020-10-22 10:00:03
- * @LastEditTime: 2021-03-30 16:37:52
+ * @LastEditTime: 2021-09-02 11:37:09
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\ASR\main\audio\player.h
  */
 #ifndef _PLAYER_H
 #define _PLAYER_H
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_log.h"
-#include "board.h"
-
-#include "mywifi.h"
-#include "esp_http_client.h"
-
-#include "esp_audio.h"
-#include "audio_pipeline.h"
-
-#include "i2s_stream.h"
-#include "http_stream.h"
-#include "tone_stream.h"
-
-#include "mp3_decoder.h"
-#include "filter_resample.h"
+#include "main.h"
 #include "audio_tone_uri.h"
 
 
