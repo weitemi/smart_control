@@ -33,7 +33,7 @@
 > > mp3:MP3离线音频
 > >
 > > spiffs：文件系统，存放二进制码库
-> > etymology_anallyze：百度词法分析定制文件
+> >        etymology_anallyze：百度词法分析定制文件
 >
 > partitions.csv：分区表
 
@@ -47,7 +47,7 @@
 
 #### 1、语音识别模块
 
-百度智能云语音识别返回结果是utf-8编码的字符串，所以代码编辑器中最好设置utf-8编码
+百度智能云语音识别返回结果是utf-8编码的字符串，所以代码编辑器中最好设置utf-8编码.
 
 ![46e76acc42cf47f7b7a0bf8f84f028da](picture/46e76acc42cf47f7b7a0bf8f84f028da.png)
 
@@ -238,7 +238,6 @@ $oc/devices/{device_id}/sys/properties/get/response/request_id={request_id}
 
 ## 目前的问题
 
-- 离线语音识别精度问题
 - wifi检测不准确
 - 需要一个网络管理任务，处理wifi、蓝牙连接状态改变时，对其他任务的影响
 

@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-03-24 23:48:44
- * @LastEditTime: 2021-09-02 15:13:53
+ * @LastEditTime: 2021-09-02 20:02:22
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\network\myble.h
@@ -9,10 +9,8 @@
 #ifndef _MY_BLE_H
 #define _MY_BLE_H
 
+#include "main.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 
 /* Attributes State Machine */
@@ -34,7 +32,7 @@ enum
 #define PROFILE_NUM                 1
 #define PROFILE_APP_IDX             0
 #define ESP_APP_ID                  0x55
-#define SAMPLE_DEVICE_NAME          "WALL-CLEANER"
+#define SAMPLE_DEVICE_NAME          "SMART_CONTROL"
 #define SVC_INST_ID                 0
 
 /* The max length of characteristic value. When the GATT client performs a write or prepare write operation,

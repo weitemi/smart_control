@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2020-12-19 16:48:59
- * @LastEditTime: 2021-09-02 11:18:20
+ * @LastEditTime: 2021-09-02 20:22:30
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adfd:\MyNote\clk_t\clk_t.c
@@ -335,6 +335,8 @@ void tmr_process(void *arg)
 void tmr_set_global(clk_t conf)
 {
 	global_clk.value = conf.value;
+
+	ESP_LOGI(TAG, "Current time: 20%d-%d-%d %d:%d:%d",global_clk.cal.year, global_clk.cal.month,global_clk.cal.date,global_clk.cal.hour,global_clk.cal.minute,global_clk.cal.second);
 }
 
 /*

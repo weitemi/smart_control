@@ -78,8 +78,11 @@ static void baidu_asr(const char *data, int len)
     item = cJSON_GetObjectItem(root, "result");
     item = cJSON_GetArrayItem(item, 0);
     char *result = cJSON_GetStringValue(item); //获取语音识别文本
+    ESP_LOGI(TAG, "baidu_asr result:%s", result);
     order_t ord = etymology(result);
     cJSON_Delete(root);
+    ESP_LOGI(TAG, "day=%d sig=%d hour=%d,min=%d obj=%d action=%d number=%d", ord.time.day, ord.time.sig, ord.time.hour, ord.time.min, ord.obj, ord.action, ord.number);
+    asr_control(ord);
 }
 
 
@@ -261,15 +264,19 @@ void asr_control(order_t ord)
     case 1:
         ord.number = ord.number > 0 ? ord.number : 26;
         if(ord.action)
-            ac_set_temp(ord.number);
+            ESP_LOGI(TAG,"order set aircon tmp=%d",ord.number);
+            //ac_set_temp(ord.number);
         else
-            ac_open(false);
+            ESP_LOGI(TAG,"order close aircon");
+            //ac_open(false);
         break;
     case 2:
         if(ord.action)
-            ble_open();
+            ESP_LOGI(TAG,"order open ble");
+            //ble_open();
         else
-            ble_close();
+            ESP_LOGI(TAG,"order close ble");
+            //ble_close();
         break;
     case 3:
         ESP_LOGI(TAG,"%s", get_Weather_String(ord.time.day));

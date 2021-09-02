@@ -3,6 +3,7 @@
         "asrtask.h": "c",
         "mywifi.h": "c",
         "storage.h": "c",
-        "audio_tone_uri.h": "c"
+        "audio_tone_uri.h": "c",
+        "typeinfo": "c"
     }
 }

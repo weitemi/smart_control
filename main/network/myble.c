@@ -1,17 +1,13 @@
 /*
  * @Author: your name
  * @Date: 2021-03-24 23:48:27
- * @LastEditTime: 2021-03-26 09:17:30
+ * @LastEditTime: 2021-09-02 20:23:39
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \esp-adf\examples\myapp\off_asr\main\network\myble.c
  */
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
-#include "esp_system.h"
-#include "esp_log.h"
+
 #include "nvs_flash.h"
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
@@ -23,7 +19,6 @@
 #include "mywifi.h"
 
 static const char *TAG = "myble.c";
-static const char *GATTS_TABLE_TAG = "GATTS_TABLE_DEMO";
 
 static uint8_t adv_config_done = 0;
 
@@ -179,25 +174,25 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
         /* advertising start complete event to indicate advertising start successfully or failed */
         if (param->adv_start_cmpl.status != ESP_BT_STATUS_SUCCESS)
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "advertising start failed");
+            ESP_LOGE(TAG, "advertising start failed");
         }
         else
         {
-            ESP_LOGI(GATTS_TABLE_TAG, "advertising start successfully");
+            ESP_LOGI(TAG, "advertising start successfully");
         }
         break;
     case ESP_GAP_BLE_ADV_STOP_COMPLETE_EVT:
         if (param->adv_stop_cmpl.status != ESP_BT_STATUS_SUCCESS)
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "Advertising stop failed");
+            ESP_LOGE(TAG, "Advertising stop failed");
         }
         else
         {
-            ESP_LOGI(GATTS_TABLE_TAG, "Stop adv successfully\n");
+            ESP_LOGI(TAG, "Stop adv successfully\n");
         }
         break;
     case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:
-        ESP_LOGI(GATTS_TABLE_TAG, "update connection params status = %d, min_int = %d, max_int = %d,conn_int = %d,latency = %d, timeout = %d",
+        ESP_LOGI(TAG, "update connection params status = %d, min_int = %d, max_int = %d,conn_int = %d,latency = %d, timeout = %d",
                  param->update_conn_params.status,
                  param->update_conn_params.min_int,
                  param->update_conn_params.max_int,
@@ -212,7 +207,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
 
 void example_prepare_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param)
 {
-    ESP_LOGI(GATTS_TABLE_TAG, "prepare write, handle = %d, value len = %d", param->write.handle, param->write.len);
+    ESP_LOGI(TAG, "prepare write, handle = %d, value len = %d", param->write.handle, param->write.len);
     esp_gatt_status_t status = ESP_GATT_OK;
     if (prepare_write_env->prepare_buf == NULL)
     {
@@ -220,7 +215,7 @@ void example_prepare_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t 
         prepare_write_env->prepare_len = 0;
         if (prepare_write_env->prepare_buf == NULL)
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "%s, Gatt_server prep no mem", __func__);
+            ESP_LOGE(TAG, "%s, Gatt_server prep no mem", __func__);
             status = ESP_GATT_NO_RESOURCES;
         }
     }
@@ -249,13 +244,13 @@ void example_prepare_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t 
             esp_err_t response_err = esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, status, gatt_rsp);
             if (response_err != ESP_OK)
             {
-                ESP_LOGE(GATTS_TABLE_TAG, "Send response error");
+                ESP_LOGE(TAG, "Send response error");
             }
             free(gatt_rsp);
         }
         else
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "%s, malloc failed", __func__);
+            ESP_LOGE(TAG, "%s, malloc failed", __func__);
         }
     }
     if (status != ESP_GATT_OK)
@@ -272,11 +267,11 @@ void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble
 {
     if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC && prepare_write_env->prepare_buf)
     {
-        esp_log_buffer_hex(GATTS_TABLE_TAG, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
+        esp_log_buffer_hex(TAG, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
     }
     else
     {
-        ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATT_PREP_WRITE_CANCEL");
+        ESP_LOGI(TAG, "ESP_GATT_PREP_WRITE_CANCEL");
     }
     if (prepare_write_env->prepare_buf)
     {
@@ -296,37 +291,37 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name(SAMPLE_DEVICE_NAME);
         if (set_dev_name_ret)
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "set device name failed, error code = %x", set_dev_name_ret);
+            ESP_LOGE(TAG, "set device name failed, error code = %x", set_dev_name_ret);
         }
         esp_err_t raw_adv_ret = esp_ble_gap_config_adv_data_raw(raw_adv_data, sizeof(raw_adv_data));
         if (raw_adv_ret)
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "config raw adv data failed, error code = %x ", raw_adv_ret);
+            ESP_LOGE(TAG, "config raw adv data failed, error code = %x ", raw_adv_ret);
         }
         adv_config_done |= ADV_CONFIG_FLAG;
         esp_err_t raw_scan_ret = esp_ble_gap_config_scan_rsp_data_raw(raw_scan_rsp_data, sizeof(raw_scan_rsp_data));
         if (raw_scan_ret)
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "config raw scan rsp data failed, error code = %x", raw_scan_ret);
+            ESP_LOGE(TAG, "config raw scan rsp data failed, error code = %x", raw_scan_ret);
         }
         adv_config_done |= SCAN_RSP_CONFIG_FLAG;
         //创建table
         esp_err_t create_attr_ret = esp_ble_gatts_create_attr_tab(gatt_db, gatts_if, WIFISERV_IDX_NB, SVC_INST_ID);
         if (create_attr_ret)
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "create attr table failed, error code = %x", create_attr_ret);
+            ESP_LOGE(TAG, "create attr table failed, error code = %x", create_attr_ret);
         }
     }
     break;
     case ESP_GATTS_READ_EVT:
-        ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_READ_EVT");
+        ESP_LOGI(TAG, "ESP_GATTS_READ_EVT");
         break;
     case ESP_GATTS_WRITE_EVT:
         if (!param->write.is_prep)
         {
             // the data length of gattc write  must be less than GATTS_DEMO_CHAR_VAL_LEN_MAX.
-            ESP_LOGI(GATTS_TABLE_TAG, "GATT_WRITE_EVT, handle = %d, value len = %d, value :", param->write.handle, param->write.len);
-            esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
+            ESP_LOGI(TAG, "GATT_WRITE_EVT, handle = %d, value len = %d, value :", param->write.handle, param->write.len);
+            esp_log_buffer_hex(TAG, param->write.value, param->write.len);
             wifiservice_handle(gatts_if, param);
 
             printf("\n this \n");
@@ -345,21 +340,21 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         break;
     case ESP_GATTS_EXEC_WRITE_EVT:
         // the length of gattc prepare write data must be less than GATTS_DEMO_CHAR_VAL_LEN_MAX.
-        ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_EXEC_WRITE_EVT");
+        ESP_LOGI(TAG, "ESP_GATTS_EXEC_WRITE_EVT");
         example_exec_write_event_env(&prepare_write_env, param);
         break;
     case ESP_GATTS_MTU_EVT:
-        ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_MTU_EVT, MTU %d", param->mtu.mtu);
+        ESP_LOGI(TAG, "ESP_GATTS_MTU_EVT, MTU %d", param->mtu.mtu);
         break;
     case ESP_GATTS_CONF_EVT:
-        ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_CONF_EVT, status = %d, attr_handle %d", param->conf.status, param->conf.handle);
+        ESP_LOGI(TAG, "ESP_GATTS_CONF_EVT, status = %d, attr_handle %d", param->conf.status, param->conf.handle);
         break;
     case ESP_GATTS_START_EVT:
-        ESP_LOGI(GATTS_TABLE_TAG, "SERVICE_START_EVT, status %d, service_handle %d", param->start.status, param->start.service_handle);
+        ESP_LOGI(TAG, "SERVICE_START_EVT, status %d, service_handle %d", param->start.status, param->start.service_handle);
         break;
     case ESP_GATTS_CONNECT_EVT:
-        ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_CONNECT_EVT, conn_id = %d", param->connect.conn_id);
-        esp_log_buffer_hex(GATTS_TABLE_TAG, param->connect.remote_bda, 6);
+        ESP_LOGI(TAG, "ESP_GATTS_CONNECT_EVT, conn_id = %d", param->connect.conn_id);
+        esp_log_buffer_hex(TAG, param->connect.remote_bda, 6);
         esp_ble_conn_update_params_t conn_params = {0};
         memcpy(conn_params.bda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
         /* For the iOS system, please refer to Apple official documents about the BLE connection parameters restrictions. */
@@ -371,7 +366,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         esp_ble_gap_update_conn_params(&conn_params);
         break;
     case ESP_GATTS_DISCONNECT_EVT:
-        ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
+        ESP_LOGI(TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
         esp_ble_gap_start_advertising(&adv_params);
         break;
     //创建attribute table
@@ -379,17 +374,17 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
     {
         if (param->add_attr_tab.status != ESP_GATT_OK)
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "create attribute table failed, error code=0x%x", param->add_attr_tab.status);
+            ESP_LOGE(TAG, "create attribute table failed, error code=0x%x", param->add_attr_tab.status);
         }
         else if (param->add_attr_tab.num_handle != WIFISERV_IDX_NB)
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "create attribute table abnormally, num_handle (%d) \
+            ESP_LOGE(TAG, "create attribute table abnormally, num_handle (%d) \
                         doesn't equal to WIFISERV_IDX_NB(%d)",
                      param->add_attr_tab.num_handle, WIFISERV_IDX_NB);
         }
         else
         {
-            ESP_LOGI(GATTS_TABLE_TAG, "create attribute table successfully, the number handle = %d\n", param->add_attr_tab.num_handle);
+            ESP_LOGI(TAG, "create attribute table successfully, the number handle = %d\n", param->add_attr_tab.num_handle);
             memcpy(wifi_handle_table, param->add_attr_tab.handles, sizeof(wifi_handle_table));
             esp_ble_gatts_start_service(wifi_handle_table[IDX_SVC]);
         }
@@ -419,7 +414,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         }
         else
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "reg app failed, app_id %04x, status %d",
+            ESP_LOGE(TAG, "reg app failed, app_id %04x, status %d",
                      param->reg.app_id,
                      param->reg.status);
             return;
@@ -490,52 +485,16 @@ void ble_init(void)
     ret = esp_bt_controller_init(&bt_cfg);
     if (ret)
     {
-        ESP_LOGE(GATTS_TABLE_TAG, "%s enable controller failed: %s", __func__, esp_err_to_name(ret));
+        ESP_LOGE(TAG, "%s enable controller failed: %s", __func__, esp_err_to_name(ret));
         return;
     }
     ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
     if (ret)
     {
-        ESP_LOGE(GATTS_TABLE_TAG, "%s enable controller failed: %s", __func__, esp_err_to_name(ret));
+        ESP_LOGE(TAG, "%s enable controller failed: %s", __func__, esp_err_to_name(ret));
         return;
     }
-    ret = esp_bluedroid_init();
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "%s init bluetooth failed: %s", __func__, esp_err_to_name(ret));
-        return;
-    }
-    ret = esp_bluedroid_enable();
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "%s enable bluetooth failed: %s", __func__, esp_err_to_name(ret));
-        return;
-    }
-    ret = esp_ble_gatts_register_callback(gatts_event_handler);
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "gatts register error, error code = %x", ret);
-        return;
-    }
-
-    ret = esp_ble_gap_register_callback(gap_event_handler);
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "gap register error, error code = %x", ret);
-        return;
-    }
-    //注册profile
-    ret = esp_ble_gatts_app_register(ESP_APP_ID);
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "gatts app register error, error code = %x", ret);
-        return;
-    }
-    esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(500);
-    if (local_mtu_ret)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
-    }
+    ble_open();
 }
 
 /*
@@ -552,37 +511,11 @@ int ble_open()
         return ESP_FAIL;
     }
     ret = esp_bluedroid_init();
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "%s init bluetooth failed: %s", __func__, esp_err_to_name(ret));
-        return;
-    }
     ret = esp_bluedroid_enable();
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "%s enable bluetooth failed: %s", __func__, esp_err_to_name(ret));
-        return;
-    }
     //注册profile
     ret = esp_ble_gatts_app_register(ESP_APP_ID);
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "gatts app register error, error code = %x", ret);
-        return;
-    }
     ret = esp_ble_gatt_set_local_mtu(500);
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "set local  MTU failed, error code = %x", ret);
-    }
-    if (ret == ESP_OK)
-    {
-        ESP_LOGI(TAG, "ble open success");
-    }
-    else
-    {
-        ESP_LOGI(TAG, "ble open fail");
-    }
+
     return ret;
 }
 /*
@@ -599,33 +532,10 @@ int ble_close()
         return ESP_FAIL;
     }
     ret = esp_ble_gatts_app_unregister(wificonfig_profile_tab[PROFILE_APP_IDX].gatts_if);
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "close wifi-app wrong\n");
-    }
     ret = esp_ble_gap_stop_advertising();
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "close gap wrong\n");
-    }
     ret = esp_bluedroid_disable();
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "bluedroid disable fail\n");
-    }
     ret = esp_bluedroid_deinit();
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(GATTS_TABLE_TAG, "bluedroid deinit fail\n");
-    }
-    if (ret == ESP_OK)
-    {
-        ESP_LOGI(TAG, "ble close success");
-    }
-    else
-    {
-        ESP_LOGI(TAG, "ble close fail");
-    }
+
     return ret;
 }
 void set_wifi_status(uint8_t sta)

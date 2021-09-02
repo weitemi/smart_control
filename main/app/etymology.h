@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-09-02 10:13:49
- * @LastEditTime: 2021-09-02 14:48:56
+ * @LastEditTime: 2021-09-02 20:12:42
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \smart_control\main\app\etymology.h
@@ -21,6 +21,16 @@
   action:动作谓语 打开=1、关闭=0
   number:语句中的数字
 */
+#define OBJ_AIR_CONDITION 1
+#define OBJ_BLE 2
+#define OBJ_WEATHER 3
+#define ACTION_ON 1
+#define ACTION_OFF 0
+#define TIME_TODAY 1
+#define TIME_TOMORROW 2
+#define TIME_ADFTERMORROW 3
+#define SIG_AM 0
+#define SIG_PM 1
 
 struct time
 {

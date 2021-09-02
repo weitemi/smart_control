@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-09-02 11:06:16
- * @LastEditTime: 2021-09-02 11:14:25
+ * @LastEditTime: 2021-09-02 20:02:49
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \smart_control\main\main.h
@@ -25,6 +25,6 @@
 #include "esp_log.h"
 #include "esp_err.h"
 #include "board.h"
-
+#include "esp_system.h"
 
 #endif

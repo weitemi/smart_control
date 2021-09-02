@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-09-02 10:13:47
- * @LastEditTime: 2021-09-02 14:59:56
+ * @LastEditTime: 2021-09-02 20:14:57
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \smart_control\main\app\etymology.c
@@ -10,58 +10,58 @@
 
 static int do_object(char *p)
 {
-	int obj = -1;
+	int obj = 0;
 	if (strstr(p, "天气"))
 	{
-		obj = 1;
+		obj = OBJ_WEATHER;
 	}
 	if (strstr(p, "空调"))
 	{
-		obj = 2;
+		obj = OBJ_AIR_CONDITION;
 	}
 	if (strstr(p, "蓝牙"))
 	{
-		obj = 3;
+		obj = OBJ_BLE;
 	}
 	return obj;
 }
 static int do_action(char *p)
 {
-	int action = -1;
+	int action = 0;
 	if (strstr(p, "打开") || strstr(p, "设置"))
 	{
-		action = 1;
+		action = ACTION_ON;
 	}
 	if (strstr(p, "关闭"))
 	{
-		action = 0;
+		action = ACTION_OFF;
 	}
 	return action;
 }
 
 static time_tt do_time(char *p)
 {
-	time_tt t;
+	time_tt t={0,0,0,0};
 
+	if (strstr(p, "今天"))
+	{
+		t.day = TIME_TODAY;
+	}
 	if (strstr(p, "明天"))
 	{
-		t.day = 1;
+		t.day = TIME_TOMORROW;
 	}
 	if (strstr(p, "后天"))
 	{
-		t.day = 2;
-	}
-	if (strstr(p, "今天"))
-	{
-		t.day = 0;
+		t.day = TIME_ADFTERMORROW;
 	}
 	if (strstr(p, "早上"))
 	{
-		t.sig = 0;
+		t.sig = SIG_AM;
 	}
 	if (strstr(p, "下午") || strstr(p, "晚上"))
 	{
-		t.sig = 1;
+		t.sig = SIG_PM;
 	}
 	if (strstr(p, "点"))
 	{
@@ -100,32 +100,32 @@ static time_tt do_time(char *p)
 	return t;
 }
 //读取温度数值
-static int do_number(char *string)
+static int do_number(char *p)
 {
-	//?获取文本中的数字
-	char *p = strstr(string, "度");
-	if (p)
+	int res = 0;
+	if (strstr(p, "度"))
 	{
-		char num_str[5] = {0};
-		char *w = num_str;
-		while (*p != '\0')
+		char numstr[3] = {0};
+		char *w = numstr;
+		char *r = strstr(p, "度") - 2;
+
+		if (*r > 47 && *r < 58)
 		{
-			if (*p > 47 && *p < 58 && w < w + 5)
-			{
-				*w = *p;
-				w++;
-			}
-			p++;
+			*w = *r;
+			w++;
 		}
-		if (num_str[0] != 0)
-			return atoi(num_str);
+
+		r++;
+		*w = *r;
+		res = atoi(numstr);
+		printf("%d度", res);
 	}
 
-	return -1;
+	return res;
 }
 order_t etymology(char *s)
 {
-	order_t ord;
+	order_t ord ;
 	ord.obj = do_object(s);
 	ord.action = do_action(s);
 	ord.time = do_time(s);

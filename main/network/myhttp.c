@@ -40,7 +40,7 @@ esp_err_t http_event_handle(esp_http_client_event_t *evt)
         printf("http_err\r\n");
         break;
     case HTTP_EVENT_ON_CONNECTED:
-        printf("http connected \r\n");
+        //printf("http connected \r\n");
         break;
     case HTTP_EVENT_HEADER_SENT:
         //printf( "http send data\r\n");
@@ -59,14 +59,14 @@ esp_err_t http_event_handle(esp_http_client_event_t *evt)
 
         break;
     case HTTP_EVENT_ON_FINISH:
-        printf("http receive finish\r\n");
+        //printf("http receive finish\r\n");
 
         //printf("---http receive buff---\r\n %.*s \r\n ---buff end--- \r\n", index, (char *)evt->user_data);
         index = 0; //数据传输完成
 
         break;
     case HTTP_EVENT_DISCONNECTED:
-        printf("http disconnected\r\n");
+        //printf("http disconnected\r\n");
 
         break;
     default:
