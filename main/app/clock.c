@@ -375,7 +375,7 @@ int get_current_nettime(clk_t *conf)
 	for (int i = 0; i < 6; i++)
 	{
 		x[i] = (unsigned int)atoi(str[i]);
-		printf("x = %d\n", x[i]);
+		//printf("x = %d\n", x[i]);
 	}
 	//赋值给时间结构体
 

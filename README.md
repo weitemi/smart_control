@@ -20,6 +20,8 @@
 >
 > > audio:音频代码
 > >
+> > app:应用代码
+> >
 > > ir_decoder:红外码库代码
 > >
 > > network:网络、蓝牙相关代码
@@ -47,17 +49,31 @@
 
 #### 1、语音识别模块
 
-百度智能云语音识别返回结果是utf-8编码的字符串，所以代码编辑器中最好设置utf-8编码.
+相对于离线版，在线版除了具有本地的语音识别之外，还加入了百度的语音识别API，当本地的语音识别未能匹配到命令时，将音频数据发送到百度语音识别接口，并对返回的文本结果进行解析，逻辑如图（百度智能云语音识别返回结果是utf-8编码的字符串，所以代码编辑器中最好设置utf-8编码.）
 
-![46e76acc42cf47f7b7a0bf8f84f028da](picture/46e76acc42cf47f7b7a0bf8f84f028da.png)
+![image-20210903144247457](picture/image-20210903144247457.png)
+
+- WakeNet是语音唤醒模型
+- MultiNet是语音识别模型。
+- Baidu ASR是在线识别的任务
+
+语音模块的工作流程如下：
+
+麦克风输入的音频经过音频解码芯片，通过IIS进入到ESP32内存，经过降噪处理输入WakeNet检测是否存在唤醒词，若有唤醒词则进入语音识别，将音频输入MultiNet匹配命令词，同时缓存音频数据。若匹配成功则会执行命令内容，若经过设置的时间（eg 4s）匹配失败，则将缓存的音频数据通过Baidu ASR发送到百度智能云并读取返回的文本结果，对结果解析出命令内容执行。
 
 
 
-以下代码在main()中运行，该代码初始化了wakenet，multinet 模型，并创建一个音频流通道（ESP-ADF中的概念），该通道的作用即上图中箭头所示。main()以一个RTOS的任务运行，在循环中实时读取通道的音频，输入模型识别。
+#### 2、ble
 
-#### 2、ble模块
+ESP32支持蓝牙双模，目前仅使用蓝牙进行配网（即给esp32发送wifi名称和密码，使esp32连接到wifi）。所以使用ble更合适。
 
-蓝牙模块主要是用于配网。使用BLE（低功耗蓝牙），创建GATT SERVER 并等待客户端连接。我们开发了一个用于配网的微信小程序，BLETool.通过小程序发送路由器的ssid和password，就能给esp32配网。
+BLE（低功耗蓝牙），适合数据量较小的场合，ESP32支持完整的BLE协议栈，以ESP32作为BLE从机，发送广播、建立GATT Server并等待客户端连接。客户端以微信小程序BLE为例。小程序与ESP32蓝牙通信过程如下图：
+
+ESP32建立一张profile、并创建一个wifi service、用于配置ESP32的wifi。小程序可向wii service 的相应属性中写入数据，来配置ESP32的wifi。
+
+> 如图，向SSID、PSWD、CONFIG分别写入下值，ESP32会自动连接到路由器esp
+
+![image-20210903150941609](picture/image-20210903150941609.png)
 
 
 
@@ -216,6 +232,28 @@ $oc/devices/{device_id}/sys/properties/get/response/request_id={request_id}
 
 #### 12、命令词
 
+**本地识别**
+
+CONFIG_CN_SPEECH_COMMAND_ID0="da kai kong tiao"
+
+CONFIG_CN_SPEECH_COMMAND_ID1="guan bi kong tiao"
+
+CONFIG_CN_SPEECH_COMMAND_ID2="zeng jia feng su"
+
+CONFIG_CN_SPEECH_COMMAND_ID3="jian xiao feng su"
+
+CONFIG_CN_SPEECH_COMMAND_ID4="sheng gao yi du"
+
+CONFIG_CN_SPEECH_COMMAND_ID5="jiang di yi du"
+
+CONFIG_CN_SPEECH_COMMAND_ID6="xian zai ji dian"
+
+CONFIG_CN_SPEECH_COMMAND_ID7="shi nei wen du"
+
+CONFIG_CN_SPEECH_COMMAND_ID8="da kai lan ya"
+
+CONFIG_CN_SPEECH_COMMAND_ID9="guan bi lan ya"
+
 **空调**
 
 - 打开/关闭空调 close open aircon
@@ -240,6 +278,7 @@ $oc/devices/{device_id}/sys/properties/get/response/request_id={request_id}
 
 - wifi检测不准确
 - 需要一个网络管理任务，处理wifi、蓝牙连接状态改变时，对其他任务的影响
+- 词法解析定时任务
 
 
 

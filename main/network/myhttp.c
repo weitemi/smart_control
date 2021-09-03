@@ -4,7 +4,7 @@
 #include "player.h"
 #include "clock.h"
 
-static const char *TAG = "MY_HTTP";
+static const char *TAG = "myhttp";
 static const char *wea_code = "200";
 
 char baidu_access_token[80] = "24.fa404e41d09ac1b28eecd91edbf6d238.2592000.1617034369.282335-23021308";
@@ -83,7 +83,6 @@ int update_access_token()
 {
     int msg = 0;
     xEventGroupSetBits(http_api_evengroup, UPDATE_TOKEN_BIT); //设置http_api_evengroup，同步http_api_task
-    //int bit = xEventGroupWaitBits(http_api_evengroup, UPDATE_TOKEN_OK_BIT, pdTRUE, pdFALSE, portMAX_DELAY); //等待http_api_task获取天气数据
     xQueueReceive(res_queue, &msg, portMAX_DELAY);
     return msg;
 }
@@ -101,10 +100,8 @@ char *get_Weather_String(int day)
     {
         return NULL;
     }
-
     xEventGroupSetBits(http_api_evengroup, GET_WEATHER_BIT); //设置GET_WEATHER_BIT，同步http_api_task
 
-    //int bit = xEventGroupWaitBits(http_api_evengroup, GET_WEATHER_OK_BIT, pdTRUE, pdFALSE, portMAX_DELAY); //等待http_api_task获取天气数据
     //若已获取天气数据，则GET_WEATHER_OK_BIT被置位，返回天气文本的地址
     xQueueReceive(res_queue, &msg, portMAX_DELAY);
     if (msg==ESP_OK)
@@ -127,7 +124,6 @@ char *get_Time_String()
     xEventGroupSetBits(http_api_evengroup, GET_TIME_BIT); //设置GET_TIME_BIT，同步http_api_task
 
     //等待http_api_task完成获取
-    //int bit = xEventGroupWaitBits(http_api_evengroup, GET_TIME_OK_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
     xQueueReceive(res_queue, &msg, portMAX_DELAY);
     //成功则返回时间数据的指针
     if (msg==ESP_OK)
@@ -155,7 +151,7 @@ void http_api_task(void *arg)
     {
         //等待用户调用api（获取时间，获取天气，获取baidutoken）
         EventBits_t bit = xEventGroupWaitBits(http_api_evengroup, GET_TIME_BIT | GET_WEATHER_BIT | UPDATE_TOKEN_BIT, pdTRUE, pdFAIL, portMAX_DELAY);
-        ESP_LOGI(TAG, "bit = %d", bit);
+        //ESP_LOGI(TAG, "bit = %d", bit);
         //判断网络可用？
         if (!get_wifi_status())
         {
@@ -169,12 +165,12 @@ void http_api_task(void *arg)
         if (bit & GET_TIME_BIT)
         {
             //获取网络时间
-            ESP_LOGI(TAG, "GET_TIME_BIT");
+            //ESP_LOGI(TAG, "GET_TIME_BIT");
 
             memset(http_data, 0, MX_HTTP_BUFF); //清空http缓存区
             config.url = TIME_URL;              //设置url，请求方式
             config.method = HTTP_METHOD_GET;
-            printf("start connect to url = %s\r\n", config.url);
+            ESP_LOGI(TAG,"start connect to url = %s\r\n", config.url);
             client = esp_http_client_init(&config);
             esp_http_client_perform(client); //发起http连接
             esp_http_client_close(client);
@@ -201,20 +197,19 @@ void http_api_task(void *arg)
 
                     cJSON_Delete(root);
                     res = ESP_OK;
-                    //xEventGroupSetBits(http_api_evengroup, GET_TIME_OK_BIT); //设置标志位，通知应用程序已完成任务
                 }
             }
         }
         if (bit & GET_WEATHER_BIT)
         {
             //获取天气
-            ESP_LOGI(TAG, "GET_WEATHER_BIT");
+            //ESP_LOGI(TAG, "GET_WEATHER_BIT");
 
             memset(http_data, 0, MX_HTTP_BUFF);
             config.url = WEATHER_URL;
             config.method = HTTP_METHOD_GET;
 
-            printf("start connect to url = %s\r\n", config.url);
+            ESP_LOGI(TAG,"start connect to url = %s\r\n", config.url);
             client = esp_http_client_init(&config);
             esp_http_client_perform(client);
             esp_http_client_close(client);
@@ -259,7 +254,6 @@ void http_api_task(void *arg)
                 //今天气温16-20度，风力1-2级，白天多云，夜晚小雨
                 snprintf(&str_weather[i][0], 100, "%s,气温%s至%s摄氏度,风力%s级,白天%s,夜晚%s.", time, tempmin, tempmax, windscale, textday, textnight);
                 res = ESP_OK;
-                //xEventGroupSetBits(http_api_evengroup, GET_WEATHER_OK_BIT); //设置标志，回应应用程序
             }
 
             cJSON_Delete(root);
@@ -269,12 +263,12 @@ void http_api_task(void *arg)
         if (bit & UPDATE_TOKEN_BIT)
         {
             //更新token
-            ESP_LOGI(TAG, "UPDATE_TOKEN_BIT");
+            //ESP_LOGI(TAG, "UPDATE_TOKEN_BIT");
             memset(http_data, 0, MX_HTTP_BUFF);
             config.url = GET_TOKEN_URL;
             config.method = HTTP_METHOD_GET;
 
-            printf("start connect to url = %s\r\n", config.url);
+            ESP_LOGI(TAG,"start connect to url = %s\r\n", config.url);
             client = esp_http_client_init(&config);
             esp_http_client_perform(client);
             esp_http_client_close(client);
@@ -305,7 +299,6 @@ void http_api_task(void *arg)
             }
 
             cJSON_Delete(root);
-            //xEventGroupSetBits(http_api_evengroup, UPDATE_TOKEN_OK_BIT); //设置标志，回应应用程序
         }
         ESP_LOGI(TAG, "send to res_queue :%d", res);
         xQueueSend(res_queue, &res, portMAX_DELAY); //返回结果
