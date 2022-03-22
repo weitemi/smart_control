@@ -403,7 +403,7 @@ static bool check_bit_zero(rmt_item32_t *item)
 }
 
 /*
- * 检查输入信号的起始帧
+ * 检查输入信号的起始帧 确定空调品牌
  * item：信号的第一个item
  */
 static bool check_header(rmt_item32_t *item)
@@ -453,7 +453,7 @@ static bool check_header(rmt_item32_t *item)
 }
 
 /*
- * 解析获取的红外信号
+ * 解析获取的红外信号、结果存放在encode
  * item：通过ringbuff读取的红外信息
  * item_num：item数量，一个item32bits
  * sig：解析的结果存放在sig中
@@ -476,15 +476,14 @@ static int parse_items(rmt_item32_t *item)
         //海尔有两个起始段
         item++;
     }
-    //查找3个数值 低电平时间，高电平时间
-
+    //查找3个数值 低电平时间，0的高电平时间、1的高电平时间
     if (item->level0 == RMT_RX_ACTIVE_LEVEL)
     {
         rx_sig.lowlevel = NEC_ITEM_DURATION(item->duration0);
         //ESP_LOGI(TAG, "lowlevel = %u",sig->lowlevel);
     }
     rmt_item32_t *t_item = item;
-    //遍历item，确定highlevel_1和highlevel_0
+    //遍历item，确定highlevel_1和highlevel_0的时间
     for (; rx_sig.highlevel_0 == 0 || rx_sig.highlevel_1 == 0; t_item++)
     {
         uint32_t duration = NEC_ITEM_DURATION(t_item->duration1);
@@ -499,8 +498,7 @@ static int parse_items(rmt_item32_t *item)
         }
     }
     ESP_LOGI(TAG, "sig: lowlevel = %u highlevel_1 = %u  highlevel_0 = %u", rx_sig.lowlevel, rx_sig.highlevel_1, rx_sig.highlevel_0);
-    //解析编码数据 目前只检查前28位数据
-    //检查数据位
+    //解析编码数据 目前只检查前28位数据 将解析的数据放进encode
     for (i = 0; i < 28; i++)
     {
         //ESP_LOGI(TAG, "item->duration0 = %u,item->duration1 = %u", NEC_ITEM_DURATION(item->duration0), NEC_ITEM_DURATION(item->duration1));
@@ -710,7 +708,7 @@ void rmt_ir_rxTask(void *agr)
 
                 rx_sig.item_num = rx_size / 4; //一个item32bit
 
-                //解析item
+                //解析item内容到encode
                 parse_items(item);
 
                 ir_code_lib_update();    //更新ac_handle
@@ -740,7 +738,7 @@ void rmt_ir_txTask(void *agr)
         ESP_LOGI(TAG, "ir_tx_irext:power=%d,temperature =%d", ac_handle.status.ac_power, ac_handle.status.ac_temp);
         ESP_LOGI(TAG, "using code lib:%s", ir_code_lib[ac_handle.code]);
         //打开ac_handle的irext库二进制文件
-        if (ir_file_open(1, 0, ir_code_lib[ac_handle.code]) != 0)
+        if (ir_file_open(REMOTE_CATEGORY_AC, SUB_CATEGORY_QUATERNARY, ir_code_lib[ac_handle.code]) != 0)
         {
             ESP_LOGI(TAG, "open file fail");
             goto tx_exit;
