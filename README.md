@@ -44,6 +44,9 @@
 ![cc34e0b2ccef417fb412c0f3445c81e7](picture/cc34e0b2ccef417fb412c0f3445c81e7.png)
 
 ### 二、硬件设计
+PCB原理图下载：
+链接：https://pan.baidu.com/s/1wzTGKnRF7WUzTYZ5U4v9kQ 
+提取码：6tds
 
 ### 三、软件模块
 
